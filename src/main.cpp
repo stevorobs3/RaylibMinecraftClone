@@ -53,13 +53,19 @@ void DrawWorld(ConstBlocks blocks) {
 	}
 }
 
-std::optional<Vector3> FindTargetBlockPosition(ConstBlocks blocks, Camera camera) {
+// basically just a vector3Int, but explicitly is the index in x,y,z of the block.
+// later - size_t?
+struct BlockPosition {
+	int x,y,z;
+};
+
+std::optional<BlockPosition> FindTargetBlock(ConstBlocks blocks, Camera camera) {
 	auto screen_center = Vector2(GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f);
 	auto ray = GetScreenToWorldRay(screen_center, camera);
 
 	float distance = FLT_MAX;
 
-	std::optional<Vector3> target = std::nullopt;
+	std::optional<BlockPosition> target = std::nullopt;
 	for (int x = 0; x < n; x++) {
 		for (int y = 0; y < height; y++) {
 			for (int z = 0; z < n; z++) {
@@ -71,7 +77,7 @@ std::optional<Vector3> FindTargetBlockPosition(ConstBlocks blocks, Camera camera
 				RayCollision rayCollision = GetRayCollisionBox(ray, bb);
 				if (rayCollision.hit && rayCollision.distance < distance) {
 					distance = rayCollision.distance;
-					target = Vector3(x + 0.5, y + 0.5, z + 0.5);
+					target = BlockPosition(x, y, z);
 				}
 			}
 		}
@@ -81,13 +87,14 @@ std::optional<Vector3> FindTargetBlockPosition(ConstBlocks blocks, Camera camera
 	return target;
 }
 
-void DrawTarget(Vector3 position) {
+void DrawTarget(BlockPosition position) {
 	// flush pending draw calls so line thickness only affects this batch. 
 	rlDrawRenderBatchActive();
 	auto original_line_width = rlGetLineWidth();
 	rlSetLineWidth(5.0f);
 
-	DrawCubeWiresV(position, Vector3(1,1,1), BLACK);
+	auto cube_origin = Vector3(position.x + 0.5, position.y + 0.5, position.z + 0.5);
+	DrawCubeWiresV(cube_origin, Vector3(1,1,1), BLACK);
 	
 	rlDrawRenderBatchActive();
 	rlSetLineWidth(original_line_width);
@@ -130,7 +137,16 @@ int main() {
 				CAMERA_FIRST_PERSON
 		);
 
-		std::optional<Vector3> target = FindTargetBlockPosition(blocks, camera);
+		bool should_delete_target_block = IsMouseButtonPressed(0);
+
+		std::optional<BlockPosition> target = FindTargetBlock(blocks, camera);
+
+		if (should_delete_target_block && target) {
+			auto &t = *target;
+
+			blocks[t.x, t.y, t.z].block_type = BlockType::Air;
+			target = FindTargetBlock(blocks, camera);
+		}
 
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
