@@ -1,6 +1,8 @@
+#include <cfloat>
 #include <raylib.h>
 #include <rlgl.h>
 #include <array>
+#include <optional>
 #include <experimental/mdspan>
 #include <unordered_map>
 
@@ -15,12 +17,17 @@ struct Block {
 };
 
 
-const int n = 5;
-const int height = 3;
+constexpr int n = 5;
+constexpr int height = 3;
 constexpr int blockCount = n * height * n;
 
 using Blocks = std::experimental::mdspan<
 		Block,
+		std::experimental::dextents<std::size_t, 3>
+	>;
+
+using ConstBlocks = std::experimental::mdspan<
+		const Block,
 		std::experimental::dextents<std::size_t, 3>
 	>;
 
@@ -30,7 +37,7 @@ std::unordered_map<BlockType, Color> block_color =
 	{BlockType::Dirt, BROWN}
 };
 
-void DrawWorld(Blocks blocks) {
+void DrawWorld(ConstBlocks blocks) {
 	
 	DrawGrid(10,1);
 	for (int x = 0; x < n; x++) {
@@ -46,11 +53,11 @@ void DrawWorld(Blocks blocks) {
 	}
 }
 
-std::optional<Vector3> FindTargetBlockPosition(Blocks blocks, Camera camera) {
+std::optional<Vector3> FindTargetBlockPosition(ConstBlocks blocks, Camera camera) {
 	auto screen_center = Vector2(GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f);
 	auto ray = GetScreenToWorldRay(screen_center, camera);
 
-	int distance = INT_MAX;
+	float distance = FLT_MAX;
 
 	std::optional<Vector3> target = std::nullopt;
 	for (int x = 0; x < n; x++) {
@@ -110,16 +117,9 @@ int main() {
 
 	
 	for (int x = 0; x < n; x++) {
-		for (int y = 0; y < height; y++) {
-			for (int z = 0; z < n; z++) {
-				if (y != 0) {
-					blocks[x,y,z] = Block(BlockType::Air);
-				}
-				else {
-					auto block_type = (x + z) % 2 == 0 ? BlockType::Grass : BlockType::Dirt;
-					blocks[x,y,z] = Block(block_type);
-				}
-			}
+		for (int z = 0; z < n; z++) {
+			auto block_type = (x + z) % 2 == 0 ? BlockType::Grass : BlockType::Dirt;
+			blocks[x,0,z] = Block(block_type);
 		}
 	}
 
