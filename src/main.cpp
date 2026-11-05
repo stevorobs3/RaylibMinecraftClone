@@ -1,4 +1,5 @@
 #include <raylib.h>
+#include <rlgl.h>
 #include <array>
 #include <experimental/mdspan>
 #include <unordered_map>
@@ -10,11 +11,13 @@ enum class BlockType {
 };
 
 struct Block {
-	BlockType block_type;
+	BlockType block_type = BlockType::Air;
 };
 
+
 const int n = 5;
-constexpr int blockCount = n * n * n;
+const int height = 3;
+constexpr int blockCount = n * height * n;
 
 using Blocks = std::experimental::mdspan<
 		Block,
@@ -27,21 +30,60 @@ std::unordered_map<BlockType, Color> block_color =
 	{BlockType::Dirt, BROWN}
 };
 
-void DrawWorld(Blocks &blocks) {
+void DrawWorld(Blocks blocks) {
 	
 	DrawGrid(10,1);
 	for (int x = 0; x < n; x++) {
-		for (int y = 0; y < n; y++) {
+		for (int y = 0; y < height; y++) {
 			for (int z = 0; z < n; z++) {
-				auto block = blocks[x,y,z];
+				auto& block = blocks[x,y,z];
 				if (block.block_type != BlockType::Air) {
-					auto color = block_color[block.block_type];
+					const Color color = block_color.at(block.block_type);
 					DrawCube(Vector3(x + 0.5, y + 0.5, z + 0.5), 1, 1, 1, color);
 				}
 			}
 		}
 	}
+}
 
+std::optional<Vector3> FindTargetBlockPosition(Blocks blocks, Camera camera) {
+	auto screen_center = Vector2(GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f);
+	auto ray = GetScreenToWorldRay(screen_center, camera);
+
+	int distance = INT_MAX;
+
+	std::optional<Vector3> target = std::nullopt;
+	for (int x = 0; x < n; x++) {
+		for (int y = 0; y < height; y++) {
+			for (int z = 0; z < n; z++) {
+				if (blocks[x,y,z].block_type == BlockType::Air) continue;
+				
+				auto bb = BoundingBox();
+				bb.min = Vector3(x,y,z);
+				bb.max = Vector3(x + 1,y + 1,z + 1);
+				RayCollision rayCollision = GetRayCollisionBox(ray, bb);
+				if (rayCollision.hit && rayCollision.distance < distance) {
+					distance = rayCollision.distance;
+					target = Vector3(x + 0.5, y + 0.5, z + 0.5);
+				}
+			}
+		}
+	}
+
+
+	return target;
+}
+
+void DrawTarget(Vector3 position) {
+	// flush pending draw calls so line thickness only affects this batch. 
+	rlDrawRenderBatchActive();
+	auto original_line_width = rlGetLineWidth();
+	rlSetLineWidth(5.0f);
+
+	DrawCubeWiresV(position, Vector3(1,1,1), BLACK);
+	
+	rlDrawRenderBatchActive();
+	rlSetLineWidth(original_line_width);
 }
 
 int main() {
@@ -64,11 +106,11 @@ int main() {
 
 	std::array<Block, blockCount> storage{};
 
-	Blocks blocks(storage.data(), n, n, n);
+	Blocks blocks(storage.data(), n, height, n);
 
 	
 	for (int x = 0; x < n; x++) {
-		for (int y = 0; y < n; y++) {
+		for (int y = 0; y < height; y++) {
 			for (int z = 0; z < n; z++) {
 				if (y != 0) {
 					blocks[x,y,z] = Block(BlockType::Air);
@@ -79,7 +121,6 @@ int main() {
 				}
 			}
 		}
-		
 	}
 
 	while (!WindowShouldClose()) {
@@ -89,14 +130,25 @@ int main() {
 				CAMERA_FIRST_PERSON
 		);
 
+		std::optional<Vector3> target = FindTargetBlockPosition(blocks, camera);
+
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
-		
+
 		BeginMode3D(camera);
 		
 		DrawWorld(blocks);
 
+		if (target) {
+			DrawTarget(target.value());
+		}
+
 		EndMode3D();
+
+		// Draw UI
+		DrawCircle(GetScreenWidth()/2, GetScreenHeight() / 2, 3, BLACK);
+		DrawFPS(0,0);
+
 		EndDrawing();
 	}
 
