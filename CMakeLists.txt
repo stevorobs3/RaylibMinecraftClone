@@ -16,12 +16,23 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
 		raylib
 		URL "C:/Users/razer/dev/raylib-6.2.zip"
+		DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(raylib)
+
+
+FetchContent_Declare(
+		mdspan
+		URL https://github.com/kokkos/mdspan/archive/refs/tags/mdspan-0.6.0.zip
+		DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+
+FetchContent_MakeAvailable(mdspan)
 
 add_executable(minecraft_clone src/main.cpp)
 target_link_libraries(minecraft_clone PRIVATE raylib)
 
+target_link_libraries(minecraft_clone PRIVATE raylib std::mdspan)
 # Deliberately use raylib 6.2's bundled GLAD declarations. This is an
 # internal raylib header; keep the raylib version pinned above.
 target_include_directories(minecraft_clone PRIVATE "${raylib_SOURCE_DIR}/src")
