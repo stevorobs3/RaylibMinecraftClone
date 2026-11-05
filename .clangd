@@ -1,0 +1,8 @@
+CompileFlags:
+  CompilationDatabase: build/sublime-Debug
+  Compiler: "C:/Program Files/JetBrains/CLion 2026.2.3.1/bin/mingw/bin/g++.exe"
+  BuiltinHeaders: QueryDriver
+  Remove:
+    - -fmodules-ts
+    - -fmodule-mapper=*
+    - -fdeps-format=*

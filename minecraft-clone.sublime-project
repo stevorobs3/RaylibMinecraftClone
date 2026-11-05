@@ -1,0 +1,20 @@
+{
+		"folders": [
+				{
+						"path": ".",
+						"folder_exclude_patterns": ["build"]
+				}
+		],
+		"settings": {
+				"cmake_executable": "minecraft_clone.exe",
+				"cmake_target": "minecraft_clone",
+				
+				"LSP": {
+						"LSP-clangd": {
+								"initialization_options": {
+										"clangd.query-driver": "C:/Program Files/JetBrains/CLion 2026.2.3.1/bin/mingw/bin/g++.exe"
+								}
+						}
+				}
+		}
+}
