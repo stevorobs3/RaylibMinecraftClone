@@ -2,6 +2,8 @@
 #include <raylib.h>
 #include <raymath.h>
 #include <optional>
+#include <format>
+#include <iostream>
 
 #include "vector.h"
 #include "world.h"
@@ -32,6 +34,16 @@ struct Player {
 	// todo: might fit better in a tools class, later
 
 	void manipulate_blocks(World &world, bool should_place_block, bool should_delete_block);
+
+	friend std::ostream& operator<<(std::ostream &os, Player &player) {
+		
+		std::string player_str = std::format("Player(pos= {},{},{}, vel={},{},{})", 
+			player.position.x,player.position.y,player.position.z,
+			player.velocity.x,player.velocity.y,player.velocity.z);
+
+		std::cout << player_str;
+		return os;
+	}
 
 private:
 	static constexpr float player_width = 0.6f;

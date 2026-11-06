@@ -1,5 +1,8 @@
 #include "raylib.h"
+#include <iostream>
 
+
+#include "vector.h"
 #include "world.h"
 #include "player.h"
 
@@ -13,6 +16,7 @@ BoundingBox Player::get_bounds() const {
 
 // update y pos and y velocity based on gravity
 void Player::apply_gravity(float dt) {
+	if (grounded) return;
 	position.y += velocity.y * dt + 0.5 * gravity * dt * dt;
 	velocity.y += dt * gravity;
 }
@@ -21,8 +25,35 @@ void Player::apply_gravity(float dt) {
 // check whether player movement has caused collisions and update
 // the player position accordingly - initially, just assuming y gravity movement
 void Player::apply_collisions(const World &world, const Vector3 previous_position){
+	// todo: this only works for gravity
+	if (grounded || velocity.y >= 0) return;
+
+	std::optional<Vector3Int> crossed_block = std::nullopt;
 	for (auto&& [block, x, y, z] : world.blocks_with_positions()) {
-		// todo: check block for collision
+		if (block.block_type == BlockType::Air) continue;
+		// does player xz overlap block xz
+		Rectangle player_xz = Rectangle(position.x, position.z, player_width, player_width);
+		Rectangle block_xz  = Rectangle(x, z, 1, 1);
+		float block_top = y + 1;
+		bool crossed_block_top = previous_position.y > block_top && position.y <= block_top;
+
+		if (crossed_block_top && CheckCollisionRecs(player_xz, block_xz)) {
+			// crossed this block - there could be multiple, stop at the one
+			// with the biggest y, which there still could be multiple
+			if (!crossed_block) {
+				crossed_block = Vector3Int(x,y,z);
+			}
+			else if (crossed_block->y < y) {
+				crossed_block = Vector3Int(x,y,z);
+			}
+			
+		}
+	}
+	if (crossed_block) {
+		velocity.y = 0;
+		grounded = true;
+		position.y = crossed_block->y + 1;
+		std::cout << "crossed a block:" << *this << std::endl;
 	}
 }
 
