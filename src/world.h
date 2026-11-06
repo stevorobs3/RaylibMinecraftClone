@@ -66,7 +66,7 @@ struct World {
 						int y = (i / n) % height;
 						int z = i % n;
 
-						return std::tuple<Block&, int, int, int>(
+						return std::tuple<const Block&, int, int, int>(
 								blocks[x, y, z], x, y, z
 						);
 				});
