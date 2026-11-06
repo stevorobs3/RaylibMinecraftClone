@@ -1,27 +1,40 @@
 #pragma once
 #include <raylib.h>
 #include <raymath.h>
+#include <optional>
+
+#include "vector.h"
+#include "world.h"
+
+struct BlockHit {
+	Vector3Int position;
+	Vector3Int face_normal;
+};
+
 
 struct Player {
-		// center of the feet
-		Vector3 position{};
-		Vector3 velocity{};
-		bool grounded = false;
+	// positioning and movement
+	Vector3 position{}; // center of the feet
+	Vector3 velocity{};
+	bool grounded = false;
 
-		BoundingBox get_bounds() const {
-			auto bb = BoundingBox();
-			bb.min = position - Vector3(player_width / 2, 0, player_width / 2);
-			bb.max = position + Vector3(player_width / 2, player_height, player_width / 2);
-			return bb;
-		}
+	BoundingBox get_bounds() const;
+	void apply_gravity(float dt);
+	void apply_collisions(World &world);
 
-		void update_physics(float dt) {
-			position.y += velocity.y * dt + 0.5 * gravity * dt * dt;
-			velocity.y += dt * gravity;
-		}
 
-	private:
-		static constexpr float player_width = 0.6f;
-		static constexpr float player_height = 1.8f;
-		static constexpr float gravity = -9.81f;
+	// targeting
+	std::optional<BlockHit> target = std::nullopt;
+	
+	void find_target(World &world, Camera &camera);
+
+	// block placement and removal
+	// todo: might fit better in a tools class, later
+
+	void manipulate_blocks(World &world, bool should_place_block, bool should_delete_block);
+
+private:
+	static constexpr float player_width = 0.6f;
+	static constexpr float player_height = 1.8f;
+	static constexpr float gravity = -9.81f;
 };
