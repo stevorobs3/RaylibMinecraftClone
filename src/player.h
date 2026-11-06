@@ -35,13 +35,13 @@ struct Player {
 
 	void manipulate_blocks(World &world, bool should_place_block, bool should_delete_block);
 
-	friend std::ostream& operator<<(std::ostream &os, Player &player) {
+	friend std::ostream& operator<<(std::ostream &os, const Player &player) {
 		
 		std::string player_str = std::format("Player(pos= {},{},{}, vel={},{},{})", 
 			player.position.x,player.position.y,player.position.z,
 			player.velocity.x,player.velocity.y,player.velocity.z);
 
-		std::cout << player_str;
+		os << player_str;
 		return os;
 	}
 
