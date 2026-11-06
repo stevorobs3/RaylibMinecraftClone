@@ -71,7 +71,8 @@ std::optional<BlockHit> FindTargetBlock(ConstBlocks blocks, Camera camera) {
 	auto screen_center = Vector2(GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f);
 	auto ray = GetScreenToWorldRay(screen_center, camera);
 
-	float distance = FLT_MAX;
+	float max_reach = 5.0f;
+	float distance = max_reach;
 
 	std::optional<BlockHit> target = std::nullopt;
 	for (int x = 0; x < n; x++) {
