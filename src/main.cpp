@@ -135,7 +135,7 @@ int main() {
 	};
 
 	Player player{
-		.position = {2, 1, 2}
+		.position = {2, 5, 2}
 	};
 		
 
@@ -183,8 +183,9 @@ int main() {
 					target.reset();
 				}
 			}
-
 		}
+
+		player.update_physics(GetFrameTime());
 
 
 
