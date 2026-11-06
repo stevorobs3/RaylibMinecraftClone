@@ -52,7 +52,9 @@ int main() {
 		// todo: later use enum or something to distinguish mode
 		player.manipulate_blocks(world, should_create_new_block, should_delete_target_block);
 
+		Vector3 previous_position = player.position; 
 		player.apply_gravity(GetFrameTime());
+		player.apply_collisions(world, previous_position);
 
 
 		// rendering

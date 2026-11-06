@@ -20,8 +20,10 @@ void Player::apply_gravity(float dt) {
 
 // check whether player movement has caused collisions and update
 // the player position accordingly - initially, just assuming y gravity movement
-void Player::apply_collisions(const World &world){
-
+void Player::apply_collisions(const World &world, const Vector3 previous_position){
+	for (auto&& [block, x, y, z] : world.blocks_with_positions()) {
+		// todo: check block for collision
+	}
 }
 
 
@@ -37,25 +39,21 @@ void Player::find_target(const World &world, const Camera &camera) {
 	target = std::nullopt;
 
 	// todo: slow - check all world blocks
-	for (int x = 0; x < world.n; x++) {
-		for (int y = 0; y < world.height; y++) {
-			for (int z = 0; z < world.n; z++) {
-				if (world.blocks[x,y,z].block_type == BlockType::Air) continue;
-				
-				auto bb = BoundingBox();
-				bb.min = Vector3(x,y,z);
-				bb.max = Vector3(x + 1,y + 1,z + 1);
-				RayCollision rayCollision = GetRayCollisionBox(ray, bb);
-				if (rayCollision.hit && rayCollision.distance < distance) {
-					distance = rayCollision.distance;
-					auto &normal = rayCollision.normal;
-					target = BlockHit{
-						.position = Vector3Int(x, y, z),
-						.face_normal = Vector3Int(normal.x, normal.y, normal.z)
-					};
-				}
-			}
-		}
+	for (auto &&[block, x, y, z] : world.blocks_with_positions()) {
+		if (block.block_type == BlockType::Air) continue;
+		
+		auto bb = BoundingBox();
+		bb.min = Vector3(x,y,z);
+		bb.max = Vector3(x + 1,y + 1,z + 1);
+		RayCollision rayCollision = GetRayCollisionBox(ray, bb);
+		if (rayCollision.hit && rayCollision.distance < distance) {
+			distance = rayCollision.distance;
+			auto &normal = rayCollision.normal;
+			target = BlockHit{
+				.position = Vector3Int(x, y, z),
+				.face_normal = Vector3Int(normal.x, normal.y, normal.z)
+			};
+		}		
 	}
 }
 

@@ -20,7 +20,7 @@ struct Player {
 
 	BoundingBox get_bounds() const;
 	void apply_gravity(float dt);
-	void apply_collisions(const World &world);
+	void apply_collisions(const World &world, const Vector3 previous_position);
 
 
 	// targeting

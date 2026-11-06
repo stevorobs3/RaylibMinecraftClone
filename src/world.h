@@ -2,6 +2,8 @@
 
 #include <experimental/mdspan>
 #include <array>
+#include <ranges>
+#include <tuple>
 
 #include "vector.h"
 
@@ -57,6 +59,18 @@ struct World {
 			position.z >= 0 && position.z < n;
 	}
 
+	auto blocks_with_positions() const {
+		return std::views::iota(0, blockCount)
+				| std::views::transform([this](int i) {
+						int x = i / (height * n);
+						int y = (i / n) % height;
+						int z = i % n;
+
+						return std::tuple<Block&, int, int, int>(
+								blocks[x, y, z], x, y, z
+						);
+				});
+}
 	static constexpr int n = 5;
 	static constexpr int height = 3;
 	static constexpr int blockCount = n * height * n;
