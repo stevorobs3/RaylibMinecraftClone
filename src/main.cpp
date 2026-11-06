@@ -156,6 +156,7 @@ int main() {
 
 	while (!WindowShouldClose()) {
 		// User input
+		// todo: separate out polling user input from mutating game state
 		UpdateCamera(
 				&camera,
 				CAMERA_FIRST_PERSON
@@ -164,6 +165,8 @@ int main() {
 		bool should_delete_target_block = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 		bool should_create_new_block = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
 
+
+		// game logic and mutating game state
 		std::optional<BlockHit> target = FindTargetBlock(blocks, camera);
 
 		if (should_delete_target_block && target) {
@@ -188,7 +191,7 @@ int main() {
 		player.update_physics(GetFrameTime());
 
 
-
+		// rendering
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
 
@@ -204,7 +207,7 @@ int main() {
 
 		EndMode3D();
 
-		// Draw UI
+		// UI
 		DrawCircle(GetScreenWidth()/2, GetScreenHeight() / 2, 3, BLACK);
 		DrawFPS(0,0);
 
