@@ -35,9 +35,12 @@ struct World {
 		initialise();
 	}
 
-	// explicitly disallow copying
-	World(World &world) = delete;
-	World operator=(World &world) = delete;
+	// explicitly disallow copying and moving
+	World(const World &world) = delete;
+	World(World &&world) = delete;
+	World& operator=(const World &world) = delete;
+	World& operator=(World &&world) = delete;
+
 
 	void initialise() {
 		for (int x = 0; x < n; x++) {
