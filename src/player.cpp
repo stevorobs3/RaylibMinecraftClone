@@ -16,7 +16,6 @@ BoundingBox Player::get_bounds() const {
 
 // update y pos and y velocity based on gravity
 void Player::apply_gravity(float dt) {
-	if (grounded) return;
 	position.y += velocity.y * dt + 0.5 * gravity * dt * dt;
 	velocity.y += dt * gravity;
 }
@@ -26,16 +25,22 @@ void Player::apply_gravity(float dt) {
 // the player position accordingly - initially, just assuming y gravity movement
 void Player::apply_collisions(const World &world, const Vector3 previous_position){
 	// todo: this only works for gravity
-	if (grounded || velocity.y >= 0) return;
+	grounded = false;
+	if (velocity.y >= 0) return;
 
 	std::optional<Vector3Int> crossed_block = std::nullopt;
+	const BoundingBox player_bounds = get_bounds();
+	const Rectangle player_xz = {
+		player_bounds.min.x, player_bounds.min.z,
+		player_bounds.max.x - player_bounds.min.x,
+		player_bounds.max.z - player_bounds.min.z
+	};
 	for (auto&& [block, x, y, z] : world.blocks_with_positions()) {
 		if (block.block_type == BlockType::Air) continue;
 		// does player xz overlap block xz
-		Rectangle player_xz = Rectangle(position.x, position.z, player_width, player_width);
 		Rectangle block_xz  = Rectangle(x, z, 1, 1);
 		float block_top = y + 1;
-		bool crossed_block_top = previous_position.y > block_top && position.y <= block_top;
+		bool crossed_block_top = previous_position.y >= block_top && position.y <= block_top;
 
 		if (crossed_block_top && CheckCollisionRecs(player_xz, block_xz)) {
 			// crossed this block - there could be multiple, stop at the one
