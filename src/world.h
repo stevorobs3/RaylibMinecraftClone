@@ -1,6 +1,7 @@
 #pragma once
 
 #include <experimental/mdspan>
+#include <array>
 
 #include "vector.h"
 
@@ -33,6 +34,10 @@ struct World {
 		blocks = Blocks(storage.data(), n, height, n);
 		initialise();
 	}
+
+	// explicitly disallow copying
+	World(World &world) = delete;
+	World operator=(World &world) = delete;
 
 	void initialise() {
 		for (int x = 0; x < n; x++) {

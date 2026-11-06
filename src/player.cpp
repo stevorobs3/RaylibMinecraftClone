@@ -20,13 +20,13 @@ void Player::apply_gravity(float dt) {
 
 // check whether player movement has caused collisions and update
 // the player position accordingly - initially, just assuming y gravity movement
-void Player::apply_collisions(World &world){
+void Player::apply_collisions(const World &world){
 
 }
 
 
 
-void Player::find_target(World &world, Camera &camera) {
+void Player::find_target(const World &world, const Camera &camera) {
 	auto screen_center = Vector2(GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f);
 	auto ray = GetScreenToWorldRay(screen_center, camera);
 

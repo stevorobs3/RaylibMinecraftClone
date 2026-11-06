@@ -20,13 +20,13 @@ struct Player {
 
 	BoundingBox get_bounds() const;
 	void apply_gravity(float dt);
-	void apply_collisions(World &world);
+	void apply_collisions(const World &world);
 
 
 	// targeting
 	std::optional<BlockHit> target = std::nullopt;
 	
-	void find_target(World &world, Camera &camera);
+	void find_target(const World &world, const Camera &camera);
 
 	// block placement and removal
 	// todo: might fit better in a tools class, later

@@ -13,8 +13,8 @@ struct Renderer {
 	void draw_ui();
 
 private:
-	World &world;
-	Player &player;
+	const World &world;
+	const Player &player;
 	const std::unordered_map<BlockType, Color> block_color =
 	{
 		{BlockType::Grass, GREEN},

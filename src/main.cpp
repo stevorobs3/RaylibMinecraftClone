@@ -49,7 +49,8 @@ int main() {
 		// game logic and mutating game state
 		player.find_target(world, camera);
 		
-		player.manipulate_blocks(world, should_delete_target_block, should_create_new_block);
+		// todo: later use enum or something to distinguish mode
+		player.manipulate_blocks(world, should_create_new_block, should_delete_target_block);
 
 		player.apply_gravity(GetFrameTime());
 
