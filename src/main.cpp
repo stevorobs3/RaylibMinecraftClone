@@ -31,7 +31,7 @@ using ConstBlocks = std::experimental::mdspan<
 		std::experimental::dextents<std::size_t, 3>
 	>;
 
-std::unordered_map<BlockType, Color> block_color =
+const std::unordered_map<BlockType, Color> block_color =
 {
 	{BlockType::Grass, GREEN},
 	{BlockType::Dirt, BROWN}
@@ -53,19 +53,27 @@ void DrawWorld(ConstBlocks blocks) {
 	}
 }
 
-// basically just a vector3Int, but explicitly is the index in x,y,z of the block.
-// later - size_t?
-struct BlockPosition {
+
+struct Vector3Int {
 	int x,y,z;
+
+	Vector3Int operator+(Vector3Int other) const {
+		return Vector3Int(x + other.x, y + other.y, z + other.z);
+	}
 };
 
-std::optional<BlockPosition> FindTargetBlock(ConstBlocks blocks, Camera camera) {
+struct BlockHit {
+	Vector3Int position;
+	Vector3Int face_normal;
+};
+
+std::optional<BlockHit> FindTargetBlock(ConstBlocks blocks, Camera camera) {
 	auto screen_center = Vector2(GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f);
 	auto ray = GetScreenToWorldRay(screen_center, camera);
 
 	float distance = FLT_MAX;
 
-	std::optional<BlockPosition> target = std::nullopt;
+	std::optional<BlockHit> target = std::nullopt;
 	for (int x = 0; x < n; x++) {
 		for (int y = 0; y < height; y++) {
 			for (int z = 0; z < n; z++) {
@@ -77,7 +85,11 @@ std::optional<BlockPosition> FindTargetBlock(ConstBlocks blocks, Camera camera) 
 				RayCollision rayCollision = GetRayCollisionBox(ray, bb);
 				if (rayCollision.hit && rayCollision.distance < distance) {
 					distance = rayCollision.distance;
-					target = BlockPosition(x, y, z);
+					auto &normal = rayCollision.normal;
+					target = BlockHit{
+						.position = Vector3Int(x, y, z),
+						.face_normal = Vector3Int(normal.x, normal.y, normal.z)
+					};
 				}
 			}
 		}
@@ -87,17 +99,23 @@ std::optional<BlockPosition> FindTargetBlock(ConstBlocks blocks, Camera camera) 
 	return target;
 }
 
-void DrawTarget(BlockPosition position) {
+void DrawTarget(Vector3Int position) {
 	// flush pending draw calls so line thickness only affects this batch. 
 	rlDrawRenderBatchActive();
 	auto original_line_width = rlGetLineWidth();
 	rlSetLineWidth(5.0f);
 
-	auto cube_origin = Vector3(position.x + 0.5, position.y + 0.5, position.z + 0.5);
-	DrawCubeWiresV(cube_origin, Vector3(1,1,1), BLACK);
+	auto cube_center = Vector3(position.x + 0.5, position.y + 0.5, position.z + 0.5);
+	DrawCubeWiresV(cube_center, Vector3(1,1,1), BLACK);
 	
 	rlDrawRenderBatchActive();
 	rlSetLineWidth(original_line_width);
+}
+
+bool IsWithinWorld(Vector3Int position) {
+	return position.x >= 0 && position.x < n &&
+		position.y >= 0 && position.y < height &&
+		position.z >= 0 && position.z < n;
 }
 
 int main() {
@@ -137,16 +155,32 @@ int main() {
 				CAMERA_FIRST_PERSON
 		);
 
-		bool should_delete_target_block = IsMouseButtonPressed(0);
+		bool should_delete_target_block = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+		bool should_create_new_block = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
 
-		std::optional<BlockPosition> target = FindTargetBlock(blocks, camera);
+		std::optional<BlockHit> target = FindTargetBlock(blocks, camera);
 
 		if (should_delete_target_block && target) {
-			auto &t = *target;
+			auto &p = target->position;
 
-			blocks[t.x, t.y, t.z].block_type = BlockType::Air;
-			target = FindTargetBlock(blocks, camera);
+			blocks[p.x, p.y, p.z].block_type = BlockType::Air;
+			target.reset();
 		}
+		else if (should_create_new_block && target) {
+			auto &t = *target;
+			Vector3Int position = t.position + t.face_normal;
+
+			if (IsWithinWorld(position)) {
+				auto & b = blocks[position.x, position.y,position.z];
+				if (b.block_type == BlockType::Air) {
+					blocks[position.x, position.y,position.z].block_type = BlockType::Dirt;
+					target.reset();
+				}
+			}
+
+		}
+
+
 
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
@@ -156,7 +190,7 @@ int main() {
 		DrawWorld(blocks);
 
 		if (target) {
-			DrawTarget(target.value());
+			DrawTarget(target->position);
 		}
 
 		EndMode3D();
