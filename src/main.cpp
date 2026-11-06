@@ -1,10 +1,11 @@
-#include <cfloat>
 #include <raylib.h>
 #include <rlgl.h>
 #include <array>
 #include <optional>
 #include <experimental/mdspan>
 #include <unordered_map>
+
+#include "player.h"
 
 enum class BlockType {
 		Air,
@@ -132,6 +133,10 @@ int main() {
 		.fovy = 45.0f,
 		.projection = CAMERA_PERSPECTIVE
 	};
+
+	Player player{
+		.position = {2, 1, 2}
+	};
 		
 
 	SetTargetFPS(60);
@@ -193,6 +198,8 @@ int main() {
 		if (target) {
 			DrawTarget(target->position);
 		}
+
+		DrawBoundingBox(player.get_bounds(), BLACK);
 
 		EndMode3D();
 

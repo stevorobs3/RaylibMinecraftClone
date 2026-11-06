@@ -29,7 +29,17 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(mdspan)
 
-add_executable(minecraft_clone src/main.cpp)
+file(GLOB SOURCES CONFIGURE_DEPENDS
+		"${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+)
+
+add_executable(minecraft_clone ${SOURCES})
+
+target_compile_definitions(minecraft_clone PRIVATE
+		RAYMATH_ENABLE_CPP_OPERATORS
+)
+
+
 target_link_libraries(minecraft_clone PRIVATE raylib)
 
 target_link_libraries(minecraft_clone PRIVATE raylib std::mdspan)
