@@ -16,7 +16,7 @@ struct Player {
 		}
 
 		void update_physics(float dt) {
-			position.y += velocity.y * dt + 0.5 * dt * dt;
+			position.y += velocity.y * dt + 0.5 * gravity * dt * dt;
 			velocity.y += dt * gravity;
 		}
 
