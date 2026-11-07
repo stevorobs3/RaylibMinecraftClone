@@ -22,7 +22,7 @@ struct Player {
 
 	BoundingBox get_bounds() const;
 	void apply_physics(float dt);
-	void apply_xz_movement(Vector3 direction, Camera camera, float dt);
+	void apply_xz_movement(Vector3 direction, const Camera &camera, float dt);
 	void apply_collisions(const World &world, const Vector3 previous_position);
 	void jump();
 

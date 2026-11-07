@@ -41,14 +41,14 @@ int main() {
 		bool should_create_new_block = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
 		bool jump_button_pressed = IsKeyPressed(KEY_SPACE);
 
-		Vector3 h_movement = Vector3Normalize(Vector3(
+		Vector3 h_movement = Vector3(
 			// Move forward-backward
 			(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) -
 			(IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)),
 			0,
 			// Move right-left
 			(IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) -
-			(IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))));
+			(IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)));
 
 		float dt = GetFrameTime();
 

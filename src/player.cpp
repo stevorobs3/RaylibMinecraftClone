@@ -1,4 +1,5 @@
 #include "raylib.h"
+#include "raymath.h"
 #include <iostream>
 #include <cmath>
 
@@ -20,7 +21,7 @@ void Player::apply_physics(float dt) {
 	velocity.y += dt * gravity;
 }
 
-void Player::apply_xz_movement(Vector3 direction, Camera camera, float dt) {
+void Player::apply_xz_movement(Vector3 direction, const Camera &camera, float dt) {
 		// Direction the camera is looking
 	Vector3 forward = camera.target - camera.position;
 
