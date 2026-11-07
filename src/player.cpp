@@ -1,6 +1,6 @@
 #include "raylib.h"
 #include <iostream>
-
+#include <cmath>
 
 #include "vector.h"
 #include "world.h"
@@ -14,8 +14,8 @@ BoundingBox Player::get_bounds() const {
 	return bb;
 }
 
-// update y pos and y velocity based on gravity
-void Player::apply_gravity(float dt) {
+// update y pos and y velocity based on world physics (gravity)
+void Player::apply_physics(float dt) {
 	position.y += velocity.y * dt + 0.5 * gravity * dt * dt;
 	velocity.y += dt * gravity;
 }
@@ -58,10 +58,16 @@ void Player::apply_collisions(const World &world, const Vector3 previous_positio
 		velocity.y = 0;
 		grounded = true;
 		position.y = crossed_block->y + 1;
-		std::cout << "crossed a block:" << *this << std::endl;
 	}
 }
 
+void Player::jump() {
+	if (!grounded) return;
+
+	float delta_vy = std::sqrt(std::abs(2 * gravity * jump_height));
+	velocity.y += delta_vy;
+	grounded = false;
+}
 
 
 void Player::find_target(const World &world, const Camera &camera) {

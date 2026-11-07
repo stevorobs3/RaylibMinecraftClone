@@ -21,9 +21,9 @@ struct Player {
 	bool grounded = false;
 
 	BoundingBox get_bounds() const;
-	void apply_gravity(float dt);
+	void apply_physics(float dt);
 	void apply_collisions(const World &world, const Vector3 previous_position);
-
+	void jump();
 
 	// targeting
 	std::optional<BlockHit> target = std::nullopt;
@@ -49,4 +49,5 @@ private:
 	static constexpr float player_width = 0.6f;
 	static constexpr float player_height = 1.8f;
 	static constexpr float gravity = -9.81f;
+	static constexpr float jump_height = 2.0f;
 };

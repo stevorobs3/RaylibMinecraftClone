@@ -23,7 +23,7 @@ int main() {
 	};
 
 	Player player{
-		.position = {2, 5, 2}
+		.position = {2, 3, 2}
 	};
 
 	World world;
@@ -44,6 +44,7 @@ int main() {
 
 		bool should_delete_target_block = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 		bool should_create_new_block = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
+		bool jump_button_pressed = IsKeyPressed(KEY_SPACE);
 
 
 		// game logic and mutating game state
@@ -53,9 +54,12 @@ int main() {
 		player.manipulate_blocks(world, should_create_new_block, should_delete_target_block);
 
 		Vector3 previous_position = player.position; 
-		player.apply_gravity(GetFrameTime());
+		player.apply_physics(GetFrameTime());
 		player.apply_collisions(world, previous_position);
-
+		// jump requires grounded to be calculated from apply_collisions
+		if (jump_button_pressed) {
+			player.jump();		
+		}
 
 		// rendering
 		BeginDrawing();
