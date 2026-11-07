@@ -47,13 +47,25 @@ void Player::apply_xz_movement(Vector3 direction, const Camera &camera, float dt
 }
 
 
+bool boxes_overlap(const BoundingBox& a,
+									 const BoundingBox& b) {
+		return a.min.x < b.max.x &&
+					 a.max.x > b.min.x &&
+					 a.min.y < b.max.y &&
+					 a.max.y > b.min.y &&
+					 a.min.z < b.max.z &&
+					 a.max.z > b.min.z;
+}
+
 // check whether player movement has caused collisions and update
 // the player position accordingly - initially, just assuming y gravity movement
 void Player::apply_collisions(const World &world, const Vector3 previous_position){
 	// todo: this only works for gravity
 	grounded = false;
+	// todo: should still work while jumping
 	if (velocity.y >= 0) return;
 
+	// todo: pull into separate function? handle_gravity_collisions?
 	std::optional<Vector3Int> crossed_block = std::nullopt;
 	const BoundingBox player_bounds = get_bounds();
 	const Rectangle player_xz = {
@@ -85,6 +97,34 @@ void Player::apply_collisions(const World &world, const Vector3 previous_positio
 		grounded = true;
 		position.y = crossed_block->y + 1;
 	}
+
+
+	for (auto&& [block, x, y, z] : world.blocks_with_positions()) {
+		if (block.block_type == BlockType::Air) continue;
+		// todo: encapsulate box size somewhere
+		auto box_bounds = BoundingBox();
+		box_bounds.min = Vector3(x,y,z);
+		box_bounds.max = Vector3(x + 1,y + 1,z + 1);
+		if (boxes_overlap(get_bounds(), box_bounds)) {
+			//todo: simplify and optimise
+			auto old_position = position;
+			position.x = previous_position.x;
+			position.z = previous_position.z;
+			// move in x, check boxes, reset if neccessary
+			position.x = old_position.x;
+			if (boxes_overlap(get_bounds(), box_bounds)) {
+				position.x = previous_position.x;
+			}
+			position.z = old_position.z;
+			if (boxes_overlap(get_bounds(), box_bounds)) {
+				position.z = previous_position.z;
+			}
+			
+			// move in z, check boxes, reset if neccessary
+		}
+	}
+
+
 }
 
 void Player::jump() {

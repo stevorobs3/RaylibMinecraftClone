@@ -37,10 +37,12 @@ struct Player {
 	void manipulate_blocks(World &world, bool should_place_block, bool should_delete_block);
 
 	friend std::ostream& operator<<(std::ostream &os, const Player &player) {
-		
-		std::string player_str = std::format("Player(pos= {},{},{}, vel={},{},{})", 
+		auto bb = player.get_bounds();
+		std::string player_str = std::format("Player(pos={:.2f},{:.2f},{:.2f}, vel={:.2f},{:.2f},{:.2f}, bb={:.2f},{:.2f},{:.2f}->{:.2f},{:.2f},{:.2f})", 
 			player.position.x,player.position.y,player.position.z,
-			player.velocity.x,player.velocity.y,player.velocity.z);
+			player.velocity.x,player.velocity.y,player.velocity.z,
+			bb.min.x,bb.min.y,bb.min.z,
+			bb.max.x,bb.max.y,bb.max.z);
 
 		os << player_str;
 		return os;

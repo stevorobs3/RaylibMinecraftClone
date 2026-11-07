@@ -51,6 +51,10 @@ struct World {
 				blocks[x,0,z] = Block(block_type);
 			}
 		}
+
+		for(int i = 0; i < n; i++) {
+			blocks[i,1,n-1].block_type = BlockType::Grass;
+		}
 	}
 
 	bool contains(Vector3Int position) {

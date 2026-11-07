@@ -14,6 +14,10 @@ int main() {
 
 
 	// initialise state of the world
+	
+	// todo: put everything in one struct and build it in one place.
+
+	// todo: add reset functionality for easy testing
 	Camera3D camera{
 		.position = {-2.0f, 4.0f, -2.0f},
 		.target = {2.5f, 0, 2.5f},
@@ -31,8 +35,6 @@ int main() {
 	Renderer renderer(world, player);
 
 	SetTargetFPS(60);
-
-
 
 	while (!WindowShouldClose()) {
 		// User input
@@ -59,8 +61,8 @@ int main() {
 		player.manipulate_blocks(world, should_create_new_block, should_delete_target_block);
 
 		Vector3 previous_position = player.position; 
-		player.apply_physics(dt);
 		player.apply_xz_movement(h_movement, camera, dt);
+		player.apply_physics(dt);
 		player.apply_collisions(world, previous_position);
 		// jump requires grounded to be calculated from apply_collisions
 		if (jump_button_pressed) {
