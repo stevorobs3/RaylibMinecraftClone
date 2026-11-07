@@ -59,6 +59,21 @@ int main() {
 			(IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) -
 			(IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)));
 
+		float modifier = 0.002f;
+
+		player.yaw += mouse_delta.x * modifier;
+		player.pitch -= mouse_delta.y * modifier;
+
+		constexpr float pitch_limit = std::numbers::pi_v<float> / 2.0f - 0.01f;
+
+		player.pitch = std::clamp(
+				player.pitch,
+				-pitch_limit,
+				pitch_limit
+		);
+
+
+
 		float dt = GetFrameTime();
 		
 		// game logic and mutating game state
@@ -76,9 +91,7 @@ int main() {
 			player.jump();		
 		}
 
-		float modifier = 0.002f;
-		player.yaw += mouse_delta.x * modifier;
-		player.pitch -= mouse_delta.y * modifier;
+		
 
 
 		// todo: optimise -> don't create new camera every frame!
