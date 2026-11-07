@@ -96,6 +96,13 @@ void Player::apply_collisions(const World &world, const Vector3 previous_positio
 	}
 
 
+
+
+	auto old_position = position;
+
+	// move only in x, check boxes, reset if neccessary
+	position.z = previous_position.z;
+	float new_x = position.x;
 	for (auto&& [block, x, y, z] : world.blocks_with_positions()) {
 		if (block.block_type == BlockType::Air) continue;
 		// todo: encapsulate box size somewhere
@@ -103,21 +110,36 @@ void Player::apply_collisions(const World &world, const Vector3 previous_positio
 		box_bounds.min = Vector3(x,y,z);
 		box_bounds.max = Vector3(x + 1,y + 1,z + 1);
 		if (boxes_overlap(get_bounds(), box_bounds)) {
-			//todo: simplify and optimise
-			auto old_position = position;
-			
-			position.z = previous_position.z;
-			// move in x, check boxes, reset if neccessary
-			if (boxes_overlap(get_bounds(), box_bounds)) {
-				position.x = previous_position.x;
+			if (previous_position.x <= position.x) {
+				new_x = x - player_width / 2;
 			}
-			// move in z, check boxes, reset if neccessary
-			position.z = old_position.z;
-			if (boxes_overlap(get_bounds(), box_bounds)) {
-				position.z = previous_position.z;
+			else {
+				new_x = x + 1 + player_width / 2;
+			}
+			
+		}
+	}
+	position.x = new_x;
+
+	// move only in z, check boxes, reset if neccessary
+	position.z = old_position.z;
+	float new_z = position.z;
+	for (auto&& [block, x, y, z] : world.blocks_with_positions()) {
+		if (block.block_type == BlockType::Air) continue;
+		// todo: encapsulate box size somewhere
+		auto box_bounds = BoundingBox();
+		box_bounds.min = Vector3(x,y,z);
+		box_bounds.max = Vector3(x + 1,y + 1,z + 1);
+		if (boxes_overlap(get_bounds(), box_bounds)) {
+			if (previous_position.z <= position.z) {
+				new_z = z - player_width / 2;
+			}
+			else {
+				new_z = z + 1 + player_width / 2;
 			}
 		}
 	}
+	position.z = new_z;
 
 
 }
