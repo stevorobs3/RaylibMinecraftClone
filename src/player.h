@@ -4,6 +4,7 @@
 #include <optional>
 #include <format>
 #include <iostream>
+#include <numbers>
 
 #include "vector.h"
 #include "world.h"
@@ -19,6 +20,11 @@ struct Player {
 	Vector3 position{}; // center of the feet
 	Vector3 velocity{};
 	bool grounded = false;
+
+	//camera angle in radians
+	float yaw = 0.0f;
+	float pitch = 0.0f;
+
 
 	BoundingBox get_bounds() const;
 	void apply_physics(float dt);
@@ -36,6 +42,10 @@ struct Player {
 
 	void manipulate_blocks(World &world, bool should_place_block, bool should_delete_block);
 
+	// camera movement
+	Vector3 get_forward() const;
+	Camera3D get_camera() const;
+
 	friend std::ostream& operator<<(std::ostream &os, const Player &player) {
 		auto bb = player.get_bounds();
 		std::string player_str = std::format("Player(pos={:.2f},{:.2f},{:.2f}, vel={:.2f},{:.2f},{:.2f}, bb={:.2f},{:.2f},{:.2f}->{:.2f},{:.2f},{:.2f})", 
@@ -49,6 +59,7 @@ struct Player {
 	}
 
 private:
+
 	static constexpr float player_width = 0.6f; // m
 	static constexpr float player_height = 1.8f; // m
 	static constexpr float gravity = -9.81f; // m/s/s

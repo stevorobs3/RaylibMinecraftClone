@@ -29,18 +29,14 @@ int main() {
 	
 	World world;
 	Player player;
-	Camera3D camera{
-		.position = {-2.0f, 4.0f, -2.0f},
-		.target = {2.5f, 0, 2.5f},
-		.up = {0.0f, 1.0f, 0.0f},
-		.fovy = 45.0f,
-		.projection = CAMERA_PERSPECTIVE
-	};
 	
 	reset(world, player);
-
+	
 	Renderer renderer(world, player);
 	SetTargetFPS(60);
+
+	Camera3D camera = player.get_camera();
+
 
 	while (!WindowShouldClose()) {
 		// User input
@@ -52,6 +48,8 @@ int main() {
 		bool should_create_new_block = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
 		bool jump_button_pressed = IsKeyPressed(KEY_SPACE);
 
+		Vector2 mouse_delta = GetMouseDelta();
+
 		Vector3 h_movement = Vector3(
 			// Move forward-backward
 			(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) -
@@ -62,7 +60,7 @@ int main() {
 			(IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)));
 
 		float dt = GetFrameTime();
-
+		
 		// game logic and mutating game state
 		player.find_target(world, camera);
 		
@@ -77,6 +75,15 @@ int main() {
 		if (jump_button_pressed) {
 			player.jump();		
 		}
+
+		float modifier = 0.002f;
+		player.yaw += mouse_delta.x * modifier;
+		player.pitch -= mouse_delta.y * modifier;
+
+
+		// todo: optimise -> don't create new camera every frame!
+		camera = player.get_camera();
+
 
 		// rendering
 		BeginDrawing();

@@ -206,3 +206,24 @@ void Player::manipulate_blocks(World &world, bool should_place_block, bool shoul
 		}
 	}
 }
+
+
+Vector3 Player::get_forward() const {
+	return {
+		std::cos(pitch) * std::cos(yaw),
+		std::sin(pitch),
+		std::cos(pitch) * std::sin(yaw)
+	};
+}
+
+Camera3D Player::get_camera() const {
+	Vector3 eye = position + Vector3{0, 1.62f, 0};
+
+	return Camera3D{
+		.position = eye,
+		.target = eye + get_forward(),
+		.up = {0, 1, 0},
+		.fovy = 75.0f,
+		.projection = CAMERA_PERSPECTIVE
+	};
+}
