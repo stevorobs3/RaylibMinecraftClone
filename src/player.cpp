@@ -60,11 +60,8 @@ bool boxes_overlap(const BoundingBox& a,
 // check whether player movement has caused collisions and update
 // the player position accordingly - initially, just assuming y gravity movement
 void Player::apply_collisions(const World &world, const Vector3 previous_position){
-	// todo: this only works for gravity
 	grounded = false;
-	// todo: should still work while jumping
-	if (velocity.y >= 0) return;
-
+	
 	// todo: pull into separate function? handle_gravity_collisions?
 	std::optional<Vector3Int> crossed_block = std::nullopt;
 	const BoundingBox player_bounds = get_bounds();
@@ -108,19 +105,17 @@ void Player::apply_collisions(const World &world, const Vector3 previous_positio
 		if (boxes_overlap(get_bounds(), box_bounds)) {
 			//todo: simplify and optimise
 			auto old_position = position;
-			position.x = previous_position.x;
+			
 			position.z = previous_position.z;
 			// move in x, check boxes, reset if neccessary
-			position.x = old_position.x;
 			if (boxes_overlap(get_bounds(), box_bounds)) {
 				position.x = previous_position.x;
 			}
+			// move in z, check boxes, reset if neccessary
 			position.z = old_position.z;
 			if (boxes_overlap(get_bounds(), box_bounds)) {
 				position.z = previous_position.z;
 			}
-			
-			// move in z, check boxes, reset if neccessary
 		}
 	}
 
