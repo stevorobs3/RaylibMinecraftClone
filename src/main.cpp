@@ -36,16 +36,21 @@ int main() {
 
 	while (!WindowShouldClose()) {
 		// User input
-		// todo: separate out polling user input from mutating game state
-		UpdateCamera(
-				&camera,
-				CAMERA_FIRST_PERSON
-		);
-
+		
 		bool should_delete_target_block = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 		bool should_create_new_block = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
 		bool jump_button_pressed = IsKeyPressed(KEY_SPACE);
 
+		Vector3 h_movement = Vector3Normalize(Vector3(
+			// Move forward-backward
+			(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) -
+			(IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)),
+			0,
+			// Move right-left
+			(IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) -
+			(IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))));
+
+		float dt = GetFrameTime();
 
 		// game logic and mutating game state
 		player.find_target(world, camera);
@@ -54,7 +59,8 @@ int main() {
 		player.manipulate_blocks(world, should_create_new_block, should_delete_target_block);
 
 		Vector3 previous_position = player.position; 
-		player.apply_physics(GetFrameTime());
+		player.apply_physics(dt);
+		player.apply_xz_movement(h_movement, camera, dt);
 		player.apply_collisions(world, previous_position);
 		// jump requires grounded to be calculated from apply_collisions
 		if (jump_button_pressed) {

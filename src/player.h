@@ -22,6 +22,7 @@ struct Player {
 
 	BoundingBox get_bounds() const;
 	void apply_physics(float dt);
+	void apply_xz_movement(Vector3 direction, Camera camera, float dt);
 	void apply_collisions(const World &world, const Vector3 previous_position);
 	void jump();
 
@@ -46,8 +47,9 @@ struct Player {
 	}
 
 private:
-	static constexpr float player_width = 0.6f;
-	static constexpr float player_height = 1.8f;
-	static constexpr float gravity = -9.81f;
-	static constexpr float jump_height = 2.0f;
+	static constexpr float player_width = 0.6f; // m
+	static constexpr float player_height = 1.8f; // m
+	static constexpr float gravity = -9.81f; // m/s/s
+	static constexpr float jump_height = 2.0f; // m
+	static constexpr float xz_movement_speed = 4.0f; // in m/s
 };

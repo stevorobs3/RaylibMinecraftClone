@@ -20,6 +20,31 @@ void Player::apply_physics(float dt) {
 	velocity.y += dt * gravity;
 }
 
+void Player::apply_xz_movement(Vector3 direction, Camera camera, float dt) {
+		// Direction the camera is looking
+	Vector3 forward = camera.target - camera.position;
+
+	// Project onto the horizontal XZ plane
+	forward.y = 0.0f;
+	forward = Vector3Normalize(forward);
+
+	// Calculate right direction
+	Vector3 right = Vector3Normalize(
+			Vector3CrossProduct(forward, camera.up)
+	);
+
+	// Convert local movement into world movement
+	Vector3 movement = (right * direction.z) + (forward * direction.x);
+
+	// Prevent faster diagonal movement
+	if (Vector3LengthSqr(movement) > 0.0f) {
+			movement = Vector3Normalize(movement);
+	}
+
+	position += movement * dt * xz_movement_speed;
+	
+}
+
 
 // check whether player movement has caused collisions and update
 // the player position accordingly - initially, just assuming y gravity movement
