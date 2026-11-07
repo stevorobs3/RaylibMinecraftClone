@@ -6,6 +6,14 @@
 #include "render.h"
 
 
+void reset(World &world, Player &player) {
+	
+	world.initialise();
+
+	player.position = {2, 3, 2};
+
+}
+
 int main() {
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	InitWindow(1280, 720, "Raylib minecraft clone");
@@ -18,6 +26,9 @@ int main() {
 	// todo: put everything in one struct and build it in one place.
 
 	// todo: add reset functionality for easy testing
+	
+	World world;
+	Player player;
 	Camera3D camera{
 		.position = {-2.0f, 4.0f, -2.0f},
 		.target = {2.5f, 0, 2.5f},
@@ -25,19 +36,17 @@ int main() {
 		.fovy = 45.0f,
 		.projection = CAMERA_PERSPECTIVE
 	};
-
-	Player player{
-		.position = {2, 3, 2}
-	};
-
-	World world;
+	
+	reset(world, player);
 
 	Renderer renderer(world, player);
-
 	SetTargetFPS(60);
 
 	while (!WindowShouldClose()) {
 		// User input
+		if (IsKeyPressed(KEY_R)) {
+			reset(world, player);
+		}
 		
 		bool should_delete_target_block = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 		bool should_create_new_block = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
