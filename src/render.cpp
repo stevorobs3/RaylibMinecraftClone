@@ -45,7 +45,7 @@ void Renderer::draw_player(bool show_physics_debug) {
     DrawCapsuleWires(
       {feet.x, feet.y + radius, feet.z},
       {feet.x, bounds.max.y - radius, feet.z},
-      radius, 12, 4, DARKGRAY
+      radius, 4, 12, DARKGRAY
     );
   }
 
