@@ -1,6 +1,5 @@
 
 #include "physics.h"
-#include "world.h"
 
 #include <Jolt/Jolt.h>
 #include <Jolt/RegisterTypes.h>
@@ -22,8 +21,8 @@
 
 #include <algorithm>
 #include <cmath>
-#include <unordered_map>
-#include <vector>
+#include <utility>
+#include <unordered_set>
 #include <cassert>
 #include <cstddef>
 #include <limits>
@@ -74,7 +73,7 @@ constexpr unsigned int layer_count =
 static_assert(layer_count > 0);
 static_assert(
   layer_count <=
-  std::numeric_limits<JPH::BroadPhaseLayer::Type>::max()
+  static_cast<unsigned int>(std::numeric_limits<JPH::BroadPhaseLayer::Type>::max()) + 1u
 );
 
 constexpr bool valid_layers() {
@@ -194,7 +193,8 @@ JPH::Vec3 to_jolt_vec(Vector3 v) {
   return JPH::Vec3{v.x, v.y, v.z};
 }
 
-Vector3 from_jolt_vec(JPH::RVec3Arg v) {
+template<class Vec>
+Vector3 from_jolt_vec(const Vec& v) {
   return {
     static_cast<float>(v.GetX()),
     static_cast<float>(v.GetY()),
@@ -212,6 +212,7 @@ JPH::BodyID to_body_id(std::uint32_t id) {
 // PhysicsWorld implementation
 // --------------------------------------------------
 
+
 class CharacterLayerFilter final : public JPH::ObjectLayerFilter {
 public:
   explicit CharacterLayerFilter(PhysicsWorld::Layer layer) : layer_(layer) {}
@@ -224,91 +225,43 @@ private:
   PhysicsWorld::Layer layer_;
 };
 
-class TerrainBodyFilter final : public JPH::BodyFilter {
-public:
-  explicit TerrainBodyFilter(
-    const std::unordered_map<JPH::uint32, Vector3Int>& positions
-  ) : positions_(positions) {}
-
-  bool ShouldCollide(const JPH::BodyID& id) const override {
-    return positions_.contains(id.GetIndexAndSequenceNumber());
-  }
-
-private:
-  const std::unordered_map<JPH::uint32, Vector3Int>& positions_;
-};
-
 struct PhysicsWorld::Impl {
-  JPH::TempAllocatorImpl temp_allocator{
-    10 * 1024 * 1024
-  };
-
+  JPH::TempAllocatorImpl temp_allocator{10 * 1024 * 1024};
   JPH::JobSystemThreadPool job_system{
     JPH::cMaxPhysicsJobs,
     JPH::cMaxPhysicsBarriers,
-    static_cast<int>(
-      std::max(1u, std::thread::hardware_concurrency()) - 1
-    )
+    static_cast<int>(std::max(1u, std::thread::hardware_concurrency()) - 1)
   };
 
   BPLayerInterface bp_layers;
   ObjectLayerFilter object_filter;
   BroadPhaseFilter broadphase_filter;
-
   JPH::PhysicsSystem system;
-
-  std::vector<JPH::BodyID> owned_bodies;
-  std::vector<JPH::BodyID> terrain_bodies;
-  std::unordered_map<JPH::uint32, Vector3Int> terrain_positions;
-
-  JPH::Ref<JPH::CharacterVirtual> player;
-  PhysicsWorld::Layer player_layer = 0;
-
-  void clear_terrain() {
-    auto& bodies = system.GetBodyInterface();
-    for (JPH::BodyID id : terrain_bodies) {
-      bodies.RemoveBody(id);
-      bodies.DestroyBody(id);
-    }
-    terrain_bodies.clear();
-    terrain_positions.clear();
-  }
+  std::unordered_set<BodyId> bodies;
 
   Impl() {
     system.Init(
-      10240,
-      0,
-      65536,
-      10240,
-      bp_layers,
-      broadphase_filter,
-      object_filter
+      10240, 0, 65536, 10240,
+      bp_layers, broadphase_filter, object_filter
     );
   }
 
   ~Impl() {
-    player = nullptr;
-    clear_terrain();
-    auto& bodies = system.GetBodyInterface();
-    for (JPH::BodyID id : owned_bodies) {
-      bodies.RemoveBody(id);
-      bodies.DestroyBody(id);
+    auto& interface = system.GetBodyInterface();
+    for (BodyId id : bodies) {
+      JPH::BodyID body_id = to_body_id(id);
+      interface.RemoveBody(body_id);
+      interface.DestroyBody(body_id);
     }
   }
 };
 
-PhysicsWorld::PhysicsWorld()
-  : impl(nullptr)
-{
+PhysicsWorld::PhysicsWorld() : impl(nullptr) {
   get_jolt_runtime();
   impl = std::make_unique<Impl>();
 }
 
 PhysicsWorld::~PhysicsWorld() = default;
-
-// --------------------------------------------------
-// Cube creation
-// --------------------------------------------------
 
 PhysicsWorld::Cube PhysicsWorld::add_cube(
   Vector3 position,
@@ -319,128 +272,128 @@ PhysicsWorld::Cube PhysicsWorld::add_cube(
   if (layer >= layer_count) {
     throw std::invalid_argument("Invalid physics layer");
   }
-
-  if (size.x <= 0 || size.y <= 0 || size.z <= 0) {
+  if (size.x <= 0.0f || size.y <= 0.0f || size.z <= 0.0f) {
     throw std::invalid_argument("Cube size must be positive");
   }
 
-  auto& bodies = impl->system.GetBodyInterface();
-
+  // No rounded corners: voxel faces should meet exactly.
   JPH::BoxShapeSettings shape_settings{
     to_jolt_vec({
       size.x * 0.5f,
       size.y * 0.5f,
       size.z * 0.5f
-    })
+    }),
+    0.0f
   };
-
-  auto shape_result = shape_settings.Create();
-
-  if (shape_result.HasError()) {
-    throw std::runtime_error(
-      shape_result.GetError().c_str()
-    );
+  auto shape = shape_settings.Create();
+  if (shape.HasError()) {
+    throw std::runtime_error(shape.GetError().c_str());
   }
 
   JPH::BodyCreationSettings settings{
-    shape_result.Get(),
-    JPH::RVec3{
-      position.x,
-      position.y,
-      position.z
-    },
+    shape.Get(),
+    JPH::RVec3{position.x, position.y, position.z},
     JPH::Quat::sIdentity(),
     to_jolt_motion(motion),
     layer
   };
 
-  const auto activation =
+  JPH::BodyID id = impl->system.GetBodyInterface().CreateAndAddBody(
+    settings,
     motion == Motion::Static
       ? JPH::EActivation::DontActivate
-      : JPH::EActivation::Activate;
-
-  JPH::BodyID id = bodies.CreateAndAddBody(
-    settings,
-    activation
+      : JPH::EActivation::Activate
   );
-
   if (id.IsInvalid()) {
-    throw std::runtime_error("Failed to create cube");
+    throw std::runtime_error("Failed to create physics cube");
   }
-  impl->owned_bodies.push_back(id);
 
-  return Cube{
-    this,
-    id.GetIndexAndSequenceNumber(),
-    size
-  };
+  BodyId packed = id.GetIndexAndSequenceNumber();
+  try {
+    impl->bodies.insert(packed);
+  } catch (...) {
+    auto& bodies = impl->system.GetBodyInterface();
+    bodies.RemoveBody(id);
+    bodies.DestroyBody(id);
+    throw;
+  }
+  return Cube{this, packed, size};
 }
 
-// --------------------------------------------------
-// Cube interface
-// --------------------------------------------------
+void PhysicsWorld::remove_body(BodyId id) noexcept {
+  if (!impl || impl->bodies.erase(id) == 0) {
+    return;
+  }
 
-PhysicsWorld::Cube::Cube(
-  PhysicsWorld* world,
-  std::uint32_t id,
-  Vector3 size
-)
-  : world_(world),
-    id_(id),
-    size_(size)
-{}
+  JPH::BodyID body_id = to_body_id(id);
+  auto& bodies = impl->system.GetBodyInterface();
+  bodies.RemoveBody(body_id);
+  bodies.DestroyBody(body_id);
+}
+
+PhysicsWorld::Cube::Cube(PhysicsWorld* world, BodyId id, Vector3 size)
+  : world_(world), id_(id), size_(size) {}
+
+PhysicsWorld::Cube::Cube(Cube&& other) noexcept
+  : world_(std::exchange(other.world_, nullptr)),
+    id_(std::exchange(other.id_, 0)),
+    size_(other.size_) {}
+
+PhysicsWorld::Cube& PhysicsWorld::Cube::operator=(Cube&& other) noexcept {
+  if (this != &other) {
+    release();
+    world_ = std::exchange(other.world_, nullptr);
+    id_ = std::exchange(other.id_, 0);
+    size_ = other.size_;
+  }
+  return *this;
+}
+
+PhysicsWorld::Cube::~Cube() {
+  release();
+}
+
+void PhysicsWorld::Cube::release() noexcept {
+  if (world_ != nullptr) {
+    world_->remove_body(id_);
+    world_ = nullptr;
+    id_ = 0;
+  }
+}
+
+PhysicsWorld::BodyId PhysicsWorld::Cube::id() const {
+  return id_;
+}
 
 Vector3 PhysicsWorld::Cube::position() const {
-  auto& bodies = world_->impl->system.GetBodyInterface();
-
   return from_jolt_vec(
-    bodies.GetCenterOfMassPosition(to_body_id(id_))
+    world_->impl->system.GetBodyInterface().GetCenterOfMassPosition(to_body_id(id_))
   );
 }
 
-void PhysicsWorld::Cube::set_position(
-  Vector3 position
-) {
-  auto& bodies = world_->impl->system.GetBodyInterface();
-
-  bodies.SetPosition(
+void PhysicsWorld::Cube::set_position(Vector3 position) {
+  world_->impl->system.GetBodyInterface().SetPosition(
     to_body_id(id_),
-    JPH::RVec3{
-      position.x,
-      position.y,
-      position.z
-    },
+    JPH::RVec3{position.x, position.y, position.z},
     JPH::EActivation::Activate
   );
 }
 
 Vector3 PhysicsWorld::Cube::velocity() const {
-  auto& bodies = world_->impl->system.GetBodyInterface();
-
   return from_jolt_vec(
-    bodies.GetLinearVelocity(to_body_id(id_))
+    world_->impl->system.GetBodyInterface().GetLinearVelocity(to_body_id(id_))
   );
 }
 
-void PhysicsWorld::Cube::set_velocity(
-  Vector3 velocity
-) {
-  auto& bodies = world_->impl->system.GetBodyInterface();
-
-  bodies.SetLinearVelocity(
-    to_body_id(id_),
-    to_jolt_vec(velocity)
+void PhysicsWorld::Cube::set_velocity(Vector3 velocity) {
+  world_->impl->system.GetBodyInterface().SetLinearVelocity(
+    to_body_id(id_), to_jolt_vec(velocity)
   );
 }
 
-void PhysicsWorld::Cube::add_impulse(
-  Vector3 impulse
-) {
-  auto& bodies = world_->impl->system.GetBodyInterface();
-
-  bodies.AddImpulse(
-    to_body_id(id_),
-    to_jolt_vec(impulse)
+void PhysicsWorld::Cube::add_impulse(Vector3 impulse) {
+  world_->impl->system.GetBodyInterface().AddImpulse(
+    to_body_id(id_), to_jolt_vec(impulse)
   );
 }
 
@@ -448,177 +401,29 @@ Vector3 PhysicsWorld::Cube::size() const {
   return size_;
 }
 
-// --------------------------------------------------
-// Simulation
-// --------------------------------------------------
-
-void PhysicsWorld::set_blocks(const World& world, Layer layer) {
-  if (layer >= layer_count) {
-    throw std::invalid_argument("Invalid terrain layer");
-  }
-
-  impl->clear_terrain();
-  JPH::BoxShapeSettings shape_settings{JPH::Vec3{0.5f, 0.5f, 0.5f}};
-  auto result = shape_settings.Create();
-  if (result.HasError()) {
-    throw std::runtime_error(result.GetError().c_str());
-  }
-
-  auto& bodies = impl->system.GetBodyInterface();
-  for (auto&& [block, x, y, z] : world.blocks_with_positions()) {
-    if (block.block_type == BlockType::Air) {
-      continue;
-    }
-
-    JPH::BodyCreationSettings settings{
-      result.Get(),
-      JPH::RVec3{x + 0.5f, y + 0.5f, z + 0.5f},
-      JPH::Quat::sIdentity(),
-      JPH::EMotionType::Static,
-      layer
-    };
-
-    JPH::BodyID id = bodies.CreateAndAddBody(
-      settings, JPH::EActivation::DontActivate
-    );
-    if (id.IsInvalid()) {
-      throw std::runtime_error("Failed to create terrain body");
-    }
-    impl->terrain_bodies.push_back(id);
-    impl->terrain_positions.emplace(
-      id.GetIndexAndSequenceNumber(), Vector3Int{x, y, z}
-    );
-  }
-
-  if (impl->player != nullptr) {
-    CharacterLayerFilter filter{impl->player_layer};
-    impl->player->RefreshContacts(
-      JPH::BroadPhaseLayerFilter{}, filter,
-      JPH::BodyFilter{}, JPH::ShapeFilter{}, impl->temp_allocator
-    );
-  }
-}
-
-void PhysicsWorld::create_player(Vector3 feet, Vector3 size, Layer layer) {
-  if (layer >= layer_count ||
-      size.x <= 0.0f || size.y <= 0.0f || size.z <= 0.0f) {
-    throw std::invalid_argument("Invalid player size or layer");
-  }
-
-  JPH::BoxShapeSettings box_settings{
-    JPH::Vec3{size.x * 0.5f, size.y * 0.5f, size.z * 0.5f}
-  };
-  auto shape = box_settings.Create();
-  if (shape.HasError()) {
-    throw std::runtime_error(shape.GetError().c_str());
-  }
-
-  JPH::CharacterVirtualSettings settings;
-  settings.mShape = shape.Get();
-  settings.mShapeOffset = JPH::Vec3{0.0f, size.y * 0.5f, 0.0f};
-  settings.mMaxSlopeAngle = JPH::DegreesToRadians(50.0f);
-
-  impl->player_layer = layer;
-  impl->player = new JPH::CharacterVirtual(
-    &settings, JPH::RVec3{feet.x, feet.y, feet.z},
-    JPH::Quat::sIdentity(), &impl->system
-  );
-  reset_player(feet);
-}
-
-void PhysicsWorld::reset_player(Vector3 feet) {
-  if (impl->player == nullptr) {
-    throw std::logic_error("Player has not been created");
-  }
-
-  impl->player->SetPosition(JPH::RVec3{feet.x, feet.y, feet.z});
-  impl->player->SetLinearVelocity(JPH::Vec3::sZero());
-  CharacterLayerFilter filter{impl->player_layer};
-  impl->player->RefreshContacts(
-    JPH::BroadPhaseLayerFilter{}, filter,
-    JPH::BodyFilter{}, JPH::ShapeFilter{}, impl->temp_allocator
-  );
-}
-
-void PhysicsWorld::move_player(
-  Vector3 horizontal_velocity, bool jump, float dt
-) {
-  if (impl->player == nullptr || dt <= 0.0f) {
-    return;
-  }
-
-  constexpr float gravity = -9.81f;
-  constexpr float jump_height = 2.0f;
-  const bool grounded =
-    impl->player->GetGroundState() ==
-    JPH::CharacterBase::EGroundState::OnGround;
-
-  const auto current = impl->player->GetLinearVelocity();
-  float vertical = current.GetY();
-  if (grounded && vertical <= 0.0f) {
-    vertical = 0.0f;
-  }
-  if (jump && grounded) {
-    vertical = std::sqrt(-2.0f * gravity * jump_height);
-  } else {
-    vertical += gravity * dt;
-  }
-
-  impl->player->SetLinearVelocity(JPH::Vec3{
-    horizontal_velocity.x, vertical, horizontal_velocity.z
-  });
-
-  CharacterLayerFilter filter{impl->player_layer};
-  impl->player->Update(
-    dt, JPH::Vec3{0, gravity, 0},
-    JPH::BroadPhaseLayerFilter{}, filter,
-    JPH::BodyFilter{}, JPH::ShapeFilter{}, impl->temp_allocator
-  );
-}
-
-Vector3 PhysicsWorld::player_position() const {
-  return impl->player
-    ? from_jolt_vec(impl->player->GetPosition())
-    : Vector3{};
-}
-
-Vector3 PhysicsWorld::player_velocity() const {
-  return impl->player
-    ? from_jolt_vec(impl->player->GetLinearVelocity())
-    : Vector3{};
-}
-
-bool PhysicsWorld::player_grounded() const {
-  return impl->player &&
-    impl->player->GetGroundState() ==
-    JPH::CharacterBase::EGroundState::OnGround;
-}
-
-std::optional<BlockHit> PhysicsWorld::raycast_block(
+std::optional<PhysicsWorld::RayHit> PhysicsWorld::raycast(
   Vector3 origin, Vector3 direction, float reach
 ) const {
-  if (reach <= 0.0f) {
+  float length = std::sqrt(
+    direction.x * direction.x +
+    direction.y * direction.y +
+    direction.z * direction.z
+  );
+  if (reach <= 0.0f || length == 0.0f) {
     return std::nullopt;
   }
+  Vector3 displacement{
+    direction.x * reach / length,
+    direction.y * reach / length,
+    direction.z * reach / length
+  };
 
   JPH::RRayCast ray{
     JPH::RVec3{origin.x, origin.y, origin.z},
-    to_jolt_vec(direction) * reach
+    to_jolt_vec(displacement)
   };
   JPH::RayCastResult hit;
-  TerrainBodyFilter filter{impl->terrain_positions};
-
-  if (!impl->system.GetNarrowPhaseQuery().CastRay(
-    ray, hit, JPH::BroadPhaseLayerFilter{},
-    JPH::ObjectLayerFilter{}, filter
-  )) {
-    return std::nullopt;
-  }
-
-  auto it = impl->terrain_positions.find(
-    hit.mBodyID.GetIndexAndSequenceNumber()
-  );
-  if (it == impl->terrain_positions.end()) {
+  if (!impl->system.GetNarrowPhaseQuery().CastRay(ray, hit)) {
     return std::nullopt;
   }
 
@@ -627,17 +432,16 @@ std::optional<BlockHit> PhysicsWorld::raycast_block(
     return std::nullopt;
   }
 
-  JPH::Vec3 normal = lock.GetBody().GetWorldSpaceSurfaceNormal(
-    hit.mSubShapeID2, ray.GetPointOnRay(hit.mFraction)
+  auto point = ray.GetPointOnRay(hit.mFraction);
+  auto normal = lock.GetBody().GetWorldSpaceSurfaceNormal(
+    hit.mSubShapeID2, point
   );
 
-  return BlockHit{
-    .position = it->second,
-    .face_normal = Vector3Int{
-      static_cast<int>(std::lround(normal.GetX())),
-      static_cast<int>(std::lround(normal.GetY())),
-      static_cast<int>(std::lround(normal.GetZ()))
-    }
+  return RayHit{
+    .body_id = hit.mBodyID.GetIndexAndSequenceNumber(),
+    .position = from_jolt_vec(point),
+    .normal = from_jolt_vec(normal),
+    .distance = hit.mFraction * reach
   };
 }
 
@@ -647,4 +451,211 @@ void PhysicsWorld::update(float dt) {
       dt, 1, &impl->temp_allocator, &impl->job_system
     );
   }
+}
+
+// --------------------------------------------------
+// Jolt virtual character and first-person camera
+// --------------------------------------------------
+
+struct PlayerController::Impl {
+  PhysicsWorld* world = nullptr;
+  JPH::Ref<JPH::CharacterVirtual> character;
+  PhysicsWorld::Layer layer = 0;
+  Vector3 size{};
+  Camera3D camera{};
+  float yaw = 0.0f;
+  float pitch = 0.0f;
+};
+
+PlayerController::PlayerController(
+  PhysicsWorld& physics,
+  Camera3D camera,
+  Vector3 feet,
+  Vector3 size,
+  PhysicsWorld::Layer layer
+) : impl(std::make_unique<Impl>()) {
+  if (layer >= layer_count ||
+      size.x <= 0.0f || size.y <= 0.0f || size.z <= 0.0f) {
+    throw std::invalid_argument("Invalid player size or layer");
+  }
+
+  impl->world = &physics;
+  impl->layer = layer;
+  impl->size = size;
+  impl->camera = camera;
+
+  Vector3 forward{
+    camera.target.x - camera.position.x,
+    camera.target.y - camera.position.y,
+    camera.target.z - camera.position.z
+  };
+  float length = std::sqrt(
+    forward.x * forward.x + forward.y * forward.y + forward.z * forward.z
+  );
+  if (length > 0.0f) {
+    impl->yaw = std::atan2(forward.z, forward.x);
+    impl->pitch = std::asin(std::clamp(forward.y / length, -1.0f, 1.0f));
+  }
+
+  JPH::BoxShapeSettings box{
+    JPH::Vec3{size.x * 0.5f, size.y * 0.5f, size.z * 0.5f},
+    0.0f
+  };
+  auto shape = box.Create();
+  if (shape.HasError()) {
+    throw std::runtime_error(shape.GetError().c_str());
+  }
+
+  JPH::CharacterVirtualSettings settings;
+  settings.mShape = shape.Get();
+  settings.mShapeOffset = JPH::Vec3{0.0f, size.y * 0.5f, 0.0f};
+  settings.mMaxSlopeAngle = JPH::DegreesToRadians(50.0f);
+
+  impl->character = new JPH::CharacterVirtual(
+    &settings,
+    JPH::RVec3{feet.x, feet.y, feet.z},
+    JPH::Quat::sIdentity(),
+    &physics.impl->system
+  );
+
+  reset(feet);
+}
+
+PlayerController::~PlayerController() = default;
+
+void PlayerController::reset(Vector3 feet) {
+  auto& character = *impl->character;
+  character.SetPosition(JPH::RVec3{feet.x, feet.y, feet.z});
+  character.SetLinearVelocity(JPH::Vec3::sZero());
+
+  CharacterLayerFilter filter{impl->layer};
+  character.RefreshContacts(
+    JPH::BroadPhaseLayerFilter{}, filter,
+    JPH::BodyFilter{}, JPH::ShapeFilter{},
+    impl->world->impl->temp_allocator
+  );
+
+  // Keep pitch and yaw through reset, as in the original game.
+  const float cp = std::cos(impl->pitch);
+  impl->camera.position = {
+    feet.x, feet.y + 1.62f, feet.z
+  };
+  impl->camera.target = {
+    feet.x + cp * std::cos(impl->yaw),
+    feet.y + 1.62f + std::sin(impl->pitch),
+    feet.z + cp * std::sin(impl->yaw)
+  };
+}
+
+void PlayerController::update(
+  const PlayerMovementInput& input, float frame_dt
+) {
+  constexpr float sensitivity = 0.002f;
+  constexpr float move_speed = 4.0f;
+  constexpr float gravity = -9.81f;
+  constexpr float jump_height = 2.0f;
+  constexpr float max_step = 1.0f / 60.0f;
+
+  impl->yaw += input.look_delta.x * sensitivity;
+  impl->pitch -= input.look_delta.y * sensitivity;
+  constexpr float pitch_limit = JPH::DegreesToRadians(90.0f) - 0.01f;
+  impl->pitch = std::clamp(impl->pitch, -pitch_limit, pitch_limit);
+
+  const float cy = std::cos(impl->yaw);
+  const float sy = std::sin(impl->yaw);
+  Vector3 horizontal{
+    cy * input.movement.x - sy * input.movement.y,
+    0.0f,
+    sy * input.movement.x + cy * input.movement.y
+  };
+  float speed_scale = std::sqrt(
+    horizontal.x * horizontal.x + horizontal.z * horizontal.z
+  );
+  if (speed_scale > 0.0f) {
+    horizontal.x *= move_speed / speed_scale;
+    horizontal.z *= move_speed / speed_scale;
+  }
+
+  float remaining = std::clamp(frame_dt, 0.0f, 0.1f);
+  bool jump = input.jump;
+  CharacterLayerFilter filter{impl->layer};
+  auto& character = *impl->character;
+
+  while (remaining > 0.0f) {
+    float dt = std::min(remaining, max_step);
+    impl->world->update(dt);
+
+    bool on_ground =
+      character.GetGroundState() ==
+      JPH::CharacterBase::EGroundState::OnGround;
+
+    float vertical = character.GetLinearVelocity().GetY();
+    if (on_ground && vertical <= 0.0f) {
+      vertical = 0.0f;
+    }
+    if (jump && on_ground) {
+      vertical = std::sqrt(-2.0f * gravity * jump_height);
+    } else {
+      vertical += gravity * dt;
+    }
+    jump = false;
+
+    character.SetLinearVelocity(JPH::Vec3{
+      horizontal.x, vertical, horizontal.z
+    });
+    character.Update(
+      dt, JPH::Vec3{0.0f, gravity, 0.0f},
+      JPH::BroadPhaseLayerFilter{}, filter,
+      JPH::BodyFilter{}, JPH::ShapeFilter{},
+      impl->world->impl->temp_allocator
+    );
+
+    remaining -= dt;
+  }
+
+  Vector3 feet = position();
+  float cp = std::cos(impl->pitch);
+  impl->camera.position = {
+    feet.x, feet.y + 1.62f, feet.z
+  };
+  impl->camera.target = {
+    feet.x + cp * std::cos(impl->yaw),
+    feet.y + 1.62f + std::sin(impl->pitch),
+    feet.z + cp * std::sin(impl->yaw)
+  };
+}
+
+Vector3 PlayerController::position() const {
+  return from_jolt_vec(impl->character->GetPosition());
+}
+
+Vector3 PlayerController::velocity() const {
+  return from_jolt_vec(impl->character->GetLinearVelocity());
+}
+
+bool PlayerController::grounded() const {
+  return impl->character->GetGroundState() ==
+    JPH::CharacterBase::EGroundState::OnGround;
+}
+
+BoundingBox PlayerController::bounds() const {
+  Vector3 feet = position();
+  const float half_width = impl->size.x * 0.5f;
+  const float half_depth = impl->size.z * 0.5f;
+  return {
+    .min = {
+      feet.x - half_width,
+      feet.y,
+      feet.z - half_depth
+    },
+    .max = {
+      feet.x + half_width,
+      feet.y + impl->size.y,
+      feet.z + half_depth
+    }
+  };
+}
+
+const Camera3D& PlayerController::camera() const {
+  return impl->camera;
 }
