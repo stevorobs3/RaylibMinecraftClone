@@ -6,6 +6,7 @@
 #include <array>
 #include <optional>
 #include <unordered_map>
+#include <utility>
 
 // Game-side adapter: the physics library knows only cubes, not voxels.
 class WorldPhysics {
