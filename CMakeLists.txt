@@ -15,7 +15,7 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(
 		raylib
-		URL "C:/Users/razer/dev/raylib-6.2.zip"
+		URL https://github.com/raysan5/raylib/archive/refs/tags/6.2.zip
 		DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(raylib)
