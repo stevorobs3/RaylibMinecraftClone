@@ -38,7 +38,8 @@ void Player::find_target(
 void Player::manipulate_blocks(
   World& world,
   WorldPhysics& colliders,
-  const PlayerInput& input
+  const PlayerInput& input,
+  const PlayerController& controller
 ) {
   if (!target) {
     return;
@@ -59,9 +60,18 @@ void Player::manipulate_blocks(
     if (world.contains(position)) {
       auto& block = world.blocks[position.x, position.y, position.z];
       if (block.block_type == BlockType::Air) {
-        block.block_type = BlockType::Dirt;
-        colliders.add_block(position);
-        target.reset();
+        // Reject placement if the new Jolt cube intersects the
+        // virtual character. Don't put the player inside solid terrain.
+        Vector3 centre{
+          position.x + 0.5f,
+          position.y + 0.5f,
+          position.z + 0.5f
+        };
+        if (!controller.overlaps_cube(centre, {1.0f, 1.0f, 1.0f})) {
+          colliders.add_block(position);
+          block.block_type = BlockType::Dirt;
+          target.reset();
+        }
       }
     }
   }
