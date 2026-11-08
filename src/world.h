@@ -45,6 +45,8 @@ struct World {
 
 
 	void initialise() {
+    // A reset must also discard blocks placed during gameplay.
+    storage.fill(Block{});
 		for (int x = 0; x < n; x++) {
 			for (int z = 0; z < n; z++) {
 				auto block_type = (x + z) % 2 == 0 ? BlockType::Grass : BlockType::Dirt;
