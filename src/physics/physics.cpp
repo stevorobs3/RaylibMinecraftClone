@@ -13,6 +13,11 @@
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Character/CharacterVirtual.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/SubShapeID.h>
+#include <Jolt/Physics/Collision/CollisionDispatch.h>
+#include <Jolt/Physics/Collision/CollideShape.h>
+#include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/CastResult.h>
@@ -463,9 +468,31 @@ struct PlayerController::Impl {
   JPH::Ref<JPH::CharacterVirtual> character;
   PhysicsWorld::Layer layer = 0;
   Vector3 size{};
+  float radius = 0.0f;
   Camera3D camera{};
   float yaw = 0.0f;
   float pitch = 0.0f;
+  float step_accumulator = 0.0f;
+  float jump_buffer = 0.0f;
+
+  void sync_camera() {
+    Vector3 feet = from_jolt_vec(character->GetPosition());
+    const float cp = std::cos(pitch);
+    camera.position = {
+      feet.x, feet.y + 1.62f, feet.z
+    };
+    camera.target = {
+      feet.x + cp * std::cos(yaw),
+      feet.y + 1.62f + std::sin(pitch),
+      feet.z + cp * std::sin(yaw)
+    };
+  }
+
+  bool on_walkable_ground() const {
+    return character->GetGroundState() ==
+      JPH::CharacterBase::EGroundState::OnGround &&
+      !character->IsSlopeTooSteep(character->GetGroundNormal());
+  }
 };
 
 PlayerController::PlayerController(
@@ -475,14 +502,16 @@ PlayerController::PlayerController(
   Vector3 size,
   PhysicsWorld::Layer layer
 ) : impl(std::make_unique<Impl>()) {
+  const float radius = 0.5f * std::min(size.x, size.z);
   if (layer >= layer_count ||
-      size.x <= 0.0f || size.y <= 0.0f || size.z <= 0.0f) {
+      size.x <= 0.0f || size.y < 2.0f * radius || size.z <= 0.0f) {
     throw std::invalid_argument("Invalid player size or layer");
   }
 
   impl->world = &physics;
   impl->layer = layer;
   impl->size = size;
+  impl->radius = radius;
   impl->camera = camera;
 
   Vector3 forward{
@@ -490,7 +519,7 @@ PlayerController::PlayerController(
     camera.target.y - camera.position.y,
     camera.target.z - camera.position.z
   };
-  float length = std::sqrt(
+  const float length = std::sqrt(
     forward.x * forward.x + forward.y * forward.y + forward.z * forward.z
   );
   if (length > 0.0f) {
@@ -498,11 +527,13 @@ PlayerController::PlayerController(
     impl->pitch = std::asin(std::clamp(forward.y / length, -1.0f, 1.0f));
   }
 
-  JPH::BoxShapeSettings box{
-    JPH::Vec3{size.x * 0.5f, size.y * 0.5f, size.z * 0.5f},
-    0.0f
+  // The capsule is centred on the feet at Y + height/2, and the
+  // bottom of its lower hemisphere is at the character's feet.
+  JPH::CapsuleShapeSettings capsule{
+    0.5f * (size.y - 2.0f * radius),
+    radius
   };
-  auto shape = box.Create();
+  const auto shape = capsule.Create();
   if (shape.HasError()) {
     throw std::runtime_error(shape.GetError().c_str());
   }
@@ -511,6 +542,10 @@ PlayerController::PlayerController(
   settings.mShape = shape.Get();
   settings.mShapeOffset = JPH::Vec3{0.0f, size.y * 0.5f, 0.0f};
   settings.mMaxSlopeAngle = JPH::DegreesToRadians(50.0f);
+  // Only contacts near the bottom cap can support the player.
+  // Otherwise contacts against walls can cause false grounded states.
+  settings.mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(), -radius);
+  settings.mEnhancedInternalEdgeRemoval = true;
 
   impl->character = new JPH::CharacterVirtual(
     &settings,
@@ -518,7 +553,6 @@ PlayerController::PlayerController(
     JPH::Quat::sIdentity(),
     &physics.impl->system
   );
-
   reset(feet);
 }
 
@@ -528,6 +562,8 @@ void PlayerController::reset(Vector3 feet) {
   auto& character = *impl->character;
   character.SetPosition(JPH::RVec3{feet.x, feet.y, feet.z});
   character.SetLinearVelocity(JPH::Vec3::sZero());
+  impl->step_accumulator = 0.0f;
+  impl->jump_buffer = 0.0f;
 
   CharacterLayerFilter filter{impl->layer};
   character.RefreshContacts(
@@ -535,32 +571,34 @@ void PlayerController::reset(Vector3 feet) {
     JPH::BodyFilter{}, JPH::ShapeFilter{},
     impl->world->impl->temp_allocator
   );
+  // Match the original reset: retain the player's look direction.
+  impl->sync_camera();
+}
 
-  // Keep pitch and yaw through reset, as in the original game.
-  const float cp = std::cos(impl->pitch);
-  impl->camera.position = {
-    feet.x, feet.y + 1.62f, feet.z
-  };
-  impl->camera.target = {
-    feet.x + cp * std::cos(impl->yaw),
-    feet.y + 1.62f + std::sin(impl->pitch),
-    feet.z + cp * std::sin(impl->yaw)
-  };
+void PlayerController::apply_look(Vector2 mouse_delta) {
+  constexpr float sensitivity = 0.002f;
+  constexpr float pitch_limit = std::numbers::pi_v<float> / 2.0f - 0.01f;
+
+  impl->yaw += mouse_delta.x * sensitivity;
+  impl->pitch -= mouse_delta.y * sensitivity;
+  impl->pitch = std::clamp(impl->pitch, -pitch_limit, pitch_limit);
+  impl->sync_camera();
 }
 
 void PlayerController::update(
   const PlayerMovementInput& input, float frame_dt
 ) {
-  constexpr float sensitivity = 0.002f;
   constexpr float move_speed = 4.0f;
   constexpr float gravity = -9.81f;
   constexpr float jump_height = 2.0f;
-  constexpr float max_step = 1.0f / 60.0f;
+  constexpr float fixed_dt = 1.0f / 60.0f;
+  constexpr float jump_buffer_duration = 0.1f;
 
-  impl->yaw += input.look_delta.x * sensitivity;
-  impl->pitch -= input.look_delta.y * sensitivity;
-  constexpr float pitch_limit = std::numbers::pi_v<float> / 2.0f - 0.01f;
-  impl->pitch = std::clamp(impl->pitch, -pitch_limit, pitch_limit);
+  if (input.jump) {
+    // Remember a press even if this render frame has no physics tick,
+    // or the character lands a few ticks after the press.
+    impl->jump_buffer = jump_buffer_duration;
+  }
 
   const float cy = std::cos(impl->yaw);
   const float sy = std::sin(impl->yaw);
@@ -569,61 +607,56 @@ void PlayerController::update(
     0.0f,
     sy * input.movement.x + cy * input.movement.y
   };
-  float speed_scale = std::sqrt(
+  const float length = std::sqrt(
     horizontal.x * horizontal.x + horizontal.z * horizontal.z
   );
-  if (speed_scale > 0.0f) {
-    horizontal.x *= move_speed / speed_scale;
-    horizontal.z *= move_speed / speed_scale;
+  if (length > 0.0f) {
+    horizontal.x *= move_speed / length;
+    horizontal.z *= move_speed / length;
   }
 
-  float remaining = std::clamp(frame_dt, 0.0f, 0.1f);
-  bool jump = input.jump;
+  impl->step_accumulator += std::clamp(frame_dt, 0.0f, 0.1f);
+
   CharacterLayerFilter filter{impl->layer};
   auto& character = *impl->character;
 
-  while (remaining > 0.0f) {
-    float dt = std::min(remaining, max_step);
-    impl->world->update(dt);
-
-    bool on_ground =
-      character.GetGroundState() ==
-      JPH::CharacterBase::EGroundState::OnGround;
+  // A frame may execute zero, one or multiple fixed physics ticks.
+  while (impl->step_accumulator >= fixed_dt) {
+    impl->world->update(fixed_dt);
 
     float vertical = character.GetLinearVelocity().GetY();
-    if (on_ground && vertical <= 0.0f) {
+    const bool grounded = impl->on_walkable_ground();
+
+    // Never accept a jump merely because a wall reports a support contact,
+    // nor while the character still has upward vertical velocity.
+    const bool can_jump = grounded && vertical <= 0.1f;
+    bool jumped = false;
+    if (impl->jump_buffer > 0.0f && can_jump) {
+      vertical = std::sqrt(-2.0f * gravity * jump_height);
+      impl->jump_buffer = 0.0f;
+      jumped = true;
+    } else if (grounded && vertical < 0.0f) {
       vertical = 0.0f;
     }
-    if (jump && on_ground) {
-      vertical = std::sqrt(-2.0f * gravity * jump_height);
-    } else {
-      vertical += gravity * dt;
+    if (!jumped) {
+      vertical += gravity * fixed_dt;
     }
-    jump = false;
 
     character.SetLinearVelocity(JPH::Vec3{
       horizontal.x, vertical, horizontal.z
     });
     character.Update(
-      dt, JPH::Vec3{0.0f, gravity, 0.0f},
+      fixed_dt, JPH::Vec3{0.0f, gravity, 0.0f},
       JPH::BroadPhaseLayerFilter{}, filter,
       JPH::BodyFilter{}, JPH::ShapeFilter{},
       impl->world->impl->temp_allocator
     );
 
-    remaining -= dt;
+    impl->jump_buffer = std::max(0.0f, impl->jump_buffer - fixed_dt);
+    impl->step_accumulator -= fixed_dt;
   }
 
-  Vector3 feet = position();
-  float cp = std::cos(impl->pitch);
-  impl->camera.position = {
-    feet.x, feet.y + 1.62f, feet.z
-  };
-  impl->camera.target = {
-    feet.x + cp * std::cos(impl->yaw),
-    feet.y + 1.62f + std::sin(impl->pitch),
-    feet.z + cp * std::sin(impl->yaw)
-  };
+  impl->sync_camera();
 }
 
 Vector3 PlayerController::position() const {
@@ -635,25 +668,72 @@ Vector3 PlayerController::velocity() const {
 }
 
 bool PlayerController::grounded() const {
-  return impl->character->GetGroundState() ==
-    JPH::CharacterBase::EGroundState::OnGround;
+  return impl->on_walkable_ground();
+}
+
+const char* PlayerController::ground_state_name() const {
+  switch (impl->character->GetGroundState()) {
+    case JPH::CharacterBase::EGroundState::OnGround:
+      return "OnGround";
+    case JPH::CharacterBase::EGroundState::OnSteepGround:
+      return "OnSteepGround";
+    case JPH::CharacterBase::EGroundState::NotSupported:
+      return "NotSupported";
+    case JPH::CharacterBase::EGroundState::InAir:
+      return "InAir";
+  }
+  return "Unknown";
+}
+
+Vector3 PlayerController::ground_normal() const {
+  return from_jolt_vec(impl->character->GetGroundNormal());
+}
+
+bool PlayerController::overlaps_cube(Vector3 centre, Vector3 size) const {
+  if (size.x <= 0.0f || size.y <= 0.0f || size.z <= 0.0f) {
+    throw std::invalid_argument("Invalid cube size");
+  }
+
+  JPH::BoxShapeSettings box{
+    JPH::Vec3{size.x * 0.5f, size.y * 0.5f, size.z * 0.5f},
+    0.0f
+  };
+  const auto shape = box.Create();
+  if (shape.HasError()) {
+    throw std::runtime_error(shape.GetError().c_str());
+  }
+
+  // CharacterVirtual isn't a regular body in Jolt's broad phase, so
+  // directly test the proposed block shape against the character shape.
+  JPH::ClosestHitCollisionCollector<JPH::CollideShapeCollector> collector;
+  JPH::CollisionDispatch::sCollideShapeVsShape(
+    impl->character->GetShape(),
+    shape.Get().GetPtr(),
+    JPH::Vec3{1.0f, 1.0f, 1.0f},
+    JPH::Vec3{1.0f, 1.0f, 1.0f},
+    impl->character->GetCenterOfMassTransform().ToMat44(),
+    JPH::Mat44::sTranslation(to_jolt_vec(centre)),
+    JPH::SubShapeIDCreator{},
+    JPH::SubShapeIDCreator{},
+    JPH::CollideShapeSettings{},
+    collector
+  );
+
+  // Ignore touching faces / minor solver tolerances; block deep overlaps.
+  return collector.HadHit() && collector.mHit.mPenetrationDepth > 0.005f;
+}
+
+float PlayerController::capsule_radius() const {
+  return impl->radius;
 }
 
 BoundingBox PlayerController::bounds() const {
-  Vector3 feet = position();
+  const Vector3 feet = position();
   const float half_width = impl->size.x * 0.5f;
   const float half_depth = impl->size.z * 0.5f;
   return {
-    .min = {
-      feet.x - half_width,
-      feet.y,
-      feet.z - half_depth
-    },
-    .max = {
-      feet.x + half_width,
-      feet.y + impl->size.y,
-      feet.z + half_depth
-    }
+    .min = {feet.x - half_width, feet.y, feet.z - half_depth},
+    .max = {feet.x + half_width, feet.y + impl->size.y, feet.z + half_depth}
   };
 }
 
