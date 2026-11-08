@@ -26,6 +26,7 @@ struct Player {
   void manipulate_blocks(
     World& world,
     WorldPhysics& colliders,
-    const PlayerInput& input
+    const PlayerInput& input,
+    const PlayerController& controller
   );
 };
