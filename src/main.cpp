@@ -1,120 +1,103 @@
 #include <raylib.h>
 #include <rlgl.h>
 
+#include <algorithm>
+#include <numbers>
+
 #include "player.h"
 #include "world.h"
 #include "render.h"
 #include "physics/physics.h"
 
-
-void reset(World &world, Player &player) {
-	
-	world.initialise();
-
-	player.position = {2, 3, 2};
-
+void reset(World& world, Player& player, PhysicsWorld& physics) {
+  world.initialise();
+  physics.set_blocks(world, PhysicsWorld::NON_MOVING);
+  physics.reset_player({2.0f, 3.0f, 2.0f});
+  player.position = physics.player_position();
+  player.velocity = physics.player_velocity();
+  player.grounded = physics.player_grounded();
+  player.target.reset();
 }
 
 int main() {
-	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	InitWindow(1280, 720, "Raylib minecraft clone");
-	DisableCursor();
-	PollInputEvents();
+  SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+  InitWindow(1280, 720, "Raylib minecraft clone");
+  DisableCursor();
+  PollInputEvents();
 
-	PhysicsWorld physics;
+  PhysicsWorld physics;
+  World world;
+  Player player;
 
+  physics.create_player(
+    {2.0f, 3.0f, 2.0f},
+    {0.6f, 1.8f, 0.6f},
+    PhysicsWorld::MOVING
+  );
+  reset(world, player, physics);
 
-	// initialise state of the world
-	
-	// todo: put everything in one struct and build it in one place.
+  Renderer renderer(world, player);
+  SetTargetFPS(60);
+  Camera3D camera = player.get_camera();
 
-	// todo: add reset functionality for easy testing
-	
-	World world;
-	Player player;
-	
-	reset(world, player);
-	
-	Renderer renderer(world, player);
-	SetTargetFPS(60);
+  while (!WindowShouldClose()) {
+    if (IsKeyPressed(KEY_R)) {
+      reset(world, player, physics);
+    }
 
-	Camera3D camera = player.get_camera();
+    bool remove = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    bool place = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
+    bool jump = IsKeyPressed(KEY_SPACE);
 
+    Vector2 mouse_delta = GetMouseDelta();
+    Vector3 movement{
+      static_cast<float>((IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) -
+                         (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))),
+      0.0f,
+      static_cast<float>((IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) -
+                         (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)))
+    };
 
-	while (!WindowShouldClose()) {
-		// User input
-		if (IsKeyPressed(KEY_R)) {
-			reset(world, player);
-		}
-		
-		bool should_delete_target_block = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-		bool should_create_new_block = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
-		bool jump_button_pressed = IsKeyPressed(KEY_SPACE);
+    constexpr float sensitivity = 0.002f;
+    player.yaw += mouse_delta.x * sensitivity;
+    player.pitch -= mouse_delta.y * sensitivity;
+    constexpr float pitch_limit = std::numbers::pi_v<float> / 2.0f - 0.01f;
+    player.pitch = std::clamp(player.pitch, -pitch_limit, pitch_limit);
 
-		Vector2 mouse_delta = GetMouseDelta();
+    // Target using the same camera as the last rendered frame.
+    player.find_target(physics, camera);
+    if (player.manipulate_blocks(world, place, remove)) {
+      physics.set_blocks(world, PhysicsWorld::NON_MOVING);
+    }
 
-		Vector3 h_movement = Vector3(
-			// Move forward-backward
-			(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) -
-			(IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)),
-			0,
-			// Move right-left
-			(IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) -
-			(IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)));
+    Vector3 horizontal = player.movement_velocity(movement, camera);
 
-		float modifier = 0.002f;
+    // Substep variable frame times to keep collision detection stable.
+    float remaining = std::min(GetFrameTime(), 0.1f);
+    constexpr float max_step = 1.0f / 60.0f;
+    while (remaining > 0.0f) {
+      float dt = std::min(remaining, max_step);
+      physics.update(dt);
+      physics.move_player(horizontal, jump, dt);
+      jump = false;
+      remaining -= dt;
+    }
 
-		player.yaw += mouse_delta.x * modifier;
-		player.pitch -= mouse_delta.y * modifier;
+    player.position = physics.player_position();
+    player.velocity = physics.player_velocity();
+    player.grounded = physics.player_grounded();
+    camera = player.get_camera();
 
-		constexpr float pitch_limit = std::numbers::pi_v<float> / 2.0f - 0.01f;
+    BeginDrawing();
+    ClearBackground(RAYWHITE);
+    BeginMode3D(camera);
+    renderer.draw_world();
+    renderer.draw_player();
+    EndMode3D();
+    renderer.draw_ui();
+    EndDrawing();
+  }
 
-		player.pitch = std::clamp(
-				player.pitch,
-				-pitch_limit,
-				pitch_limit
-		);
-
-
-
-		float dt = GetFrameTime();
-		
-		// game logic and mutating game state
-		player.find_target(world, camera);
-		
-		// todo: later use enum or something to distinguish mode
-		player.manipulate_blocks(world, should_create_new_block, should_delete_target_block);
-
-		Vector3 previous_position = player.position; 
-		player.apply_xz_movement(h_movement, camera, dt);
-		player.apply_physics(dt);
-		player.apply_collisions(world, previous_position);
-		// jump requires grounded to be calculated from apply_collisions
-		if (jump_button_pressed) {
-			player.jump();		
-		}
-
-		
-		camera = player.get_camera();
-
-
-		// rendering
-		BeginDrawing();
-		ClearBackground(RAYWHITE);
-
-		BeginMode3D(camera);
-		
-		renderer.draw_world();
-		renderer.draw_player();
-
-		EndMode3D();
-		
-		renderer.draw_ui();
-		
-		EndDrawing();
-	}
-
-	CloseWindow();
-	return 0;
+  CloseWindow();
+  return 0;
 }
-
