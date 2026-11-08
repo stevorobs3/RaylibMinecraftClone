@@ -63,7 +63,7 @@ target_include_directories(GamePhysics
 )
 
 target_link_libraries(GamePhysics
-		PRIVATE Jolt
+		PRIVATE Jolt raylib
 )
 
 target_link_libraries(minecraft_clone PRIVATE
