@@ -4,6 +4,7 @@
 #include "player.h"
 #include "world.h"
 #include "render.h"
+#include "physics/physics.h"
 
 
 void reset(World &world, Player &player) {
@@ -19,6 +20,8 @@ int main() {
 	InitWindow(1280, 720, "Raylib minecraft clone");
 	DisableCursor();
 	PollInputEvents();
+
+	PhysicsWorld physics;
 
 
 	// initialise state of the world

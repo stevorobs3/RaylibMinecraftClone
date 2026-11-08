@@ -6,3 +6,7 @@ CompileFlags:
     - -fmodules-ts
     - -fmodule-mapper=*
     - -fdeps-format=*
+Diagnostics:
+  Suppress:
+    - builtin_definition
+    - ovl_diff_return_type

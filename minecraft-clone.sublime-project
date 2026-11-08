@@ -10,11 +10,14 @@
 				"cmake_target": "minecraft_clone",
 				
 				"LSP": {
-						"LSP-clangd": {
-								"initialization_options": {
-										"clangd.query-driver": "C:/Program Files/JetBrains/CLion 2026.2.3.1/bin/mingw/bin/g++.exe"
-								}
-						}
+					"LSP-clangd": {
+							"command": [
+									"C:/Program Files/JetBrains/CLion 2026.2.3.1/bin/clang/win/x64/bin/clangd.exe",
+									"--background-index",
+									"--builtin-headers=Clang",
+									"--query-driver=C:/Program Files/JetBrains/CLion 2026.2.3.1/bin/mingw/bin/g++.exe"
+								]
+					}
 				}
 		}
 }

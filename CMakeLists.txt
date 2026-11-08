@@ -54,11 +54,22 @@ target_compile_definitions(minecraft_clone PRIVATE
 		RAYMATH_ENABLE_CPP_OPERATORS
 )
 
+add_library(GamePhysics STATIC
+		src/physics/physics.cpp
+)
+
+target_include_directories(GamePhysics
+		PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+
+target_link_libraries(GamePhysics
+		PRIVATE Jolt
+)
 
 target_link_libraries(minecraft_clone PRIVATE
 		raylib
 		std::mdspan
-		Jolt
+		GamePhysics
 )
 # Deliberately use raylib 6.2's bundled GLAD declarations. This is an
 # internal raylib header; keep the raylib version pinned above.
