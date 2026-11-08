@@ -1,18 +1,38 @@
+
 #pragma once
 
+#include <array>
+#include <cstdint>
 #include <memory>
+#include <utility>
 
-struct PhysicsWorld {
-		PhysicsWorld();
-		~PhysicsWorld();
+class PhysicsWorld {
+public:
+  using Layer = std::uint16_t;
+  using CollisionPair = std::pair<Layer, Layer>;
 
-		PhysicsWorld(const PhysicsWorld&) = delete;
-		PhysicsWorld& operator=(
-				const PhysicsWorld&) = delete;
+  static constexpr Layer NON_MOVING = 0;
+  static constexpr Layer MOVING = 1;
 
-		void update(float dt);
+  static constexpr std::array ALL_LAYERS{
+    NON_MOVING,
+    MOVING
+  };
+
+  static constexpr std::array ALLOWED_COLLISIONS{
+    CollisionPair{NON_MOVING, MOVING},
+    CollisionPair{MOVING, MOVING}
+  };
+
+  PhysicsWorld();
+  ~PhysicsWorld();
+
+  PhysicsWorld(const PhysicsWorld&) = delete;
+  PhysicsWorld& operator=(const PhysicsWorld&) = delete;
+
+  void update(float dt);
 
 private:
-		struct Impl;
-		std::unique_ptr<Impl> impl;
+  struct Impl;
+  std::unique_ptr<Impl> impl;
 };
