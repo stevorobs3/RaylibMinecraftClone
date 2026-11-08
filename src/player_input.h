@@ -1,6 +1,7 @@
 #pragma once
 
 #include <raylib.h>
+#include "physics/physics.h"
 
 // Translate raylib polling into one game input snapshot per frame.
 struct PlayerInput {
