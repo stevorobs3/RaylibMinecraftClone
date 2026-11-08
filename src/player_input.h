@@ -11,6 +11,7 @@ struct PlayerInput {
   bool place_block = false;
   bool remove_block = false;
   bool reset_world = false;
+  bool toggle_debug = false;
 
   static PlayerInput poll() {
     PlayerInput input;
@@ -27,6 +28,7 @@ struct PlayerInput {
     input.place_block = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
     input.remove_block = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     input.reset_world = IsKeyPressed(KEY_R);
+    input.toggle_debug = IsKeyPressed(KEY_F3);
     return input;
   }
 
@@ -34,11 +36,11 @@ struct PlayerInput {
   bool wants_place_block() const { return place_block; }
   bool wants_remove_block() const { return remove_block; }
   bool wants_reset() const { return reset_world; }
+  bool wants_toggle_debug() const { return toggle_debug; }
 
   PlayerMovementInput movement_command() const {
     return {
       .movement = movement,
-      .look_delta = look_delta,
       .jump = jump
     };
   }
