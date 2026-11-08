@@ -100,7 +100,6 @@ private:
 // walking use the same orientation.
 struct PlayerMovementInput {
   Vector2 movement{};  // x: forward/back, y: strafe right/left
-  Vector2 look_delta{};
   bool jump = false;
 };
 
@@ -118,12 +117,19 @@ public:
   PlayerController(const PlayerController&) = delete;
   PlayerController& operator=(const PlayerController&) = delete;
 
+  // Look is applied before raycast / block interaction each render frame.
+  void apply_look(Vector2 mouse_delta);
+  // Movement and Jolt simulation advance on fixed 60 Hz ticks.
   void update(const PlayerMovementInput& input, float frame_dt);
   void reset(Vector3 feet);
 
   Vector3 position() const;  // Centre of feet
   Vector3 velocity() const;
   bool grounded() const;
+  const char* ground_state_name() const;
+  Vector3 ground_normal() const;
+  bool overlaps_cube(Vector3 centre, Vector3 size) const;
+  float capsule_radius() const;
   BoundingBox bounds() const;
   const Camera3D& camera() const;
 
