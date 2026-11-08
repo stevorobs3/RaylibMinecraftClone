@@ -29,6 +29,11 @@ struct PlayerInput {
     return input;
   }
 
+  bool wants_jump() const { return jump; }
+  bool wants_place_block() const { return place_block; }
+  bool wants_remove_block() const { return remove_block; }
+  bool wants_reset() const { return reset_world; }
+
   PlayerMovementInput movement_command() const {
     return {
       .movement = movement,
