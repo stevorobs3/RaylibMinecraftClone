@@ -45,7 +45,7 @@ void Player::manipulate_blocks(
   }
 
   BlockHit hit = *target;
-  if (input.remove_block) {
+  if (input.wants_remove_block()) {
     world.blocks[
       hit.position.x, hit.position.y, hit.position.z
     ].block_type = BlockType::Air;
@@ -54,7 +54,7 @@ void Player::manipulate_blocks(
     return;
   }
 
-  if (input.place_block) {
+  if (input.wants_place_block()) {
     Vector3Int position = hit.position + hit.face_normal;
     if (world.contains(position)) {
       auto& block = world.blocks[position.x, position.y, position.z];
