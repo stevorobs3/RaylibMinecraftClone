@@ -15,8 +15,8 @@ struct Renderer {
   ) : world(world), player(player), controller(controller) {}
 
   void draw_world();
-  void draw_player();
-  void draw_ui();
+  void draw_player(bool show_physics_debug);
+  void draw_ui(bool show_physics_debug);
 
 private:
   const World& world;
