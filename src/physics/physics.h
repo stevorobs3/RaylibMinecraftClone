@@ -1,7 +1,6 @@
 #pragma once
 
 #include "raylib.h"
-#include "vector.h"
 
 #include <array>
 #include <cstdint>
@@ -9,16 +8,12 @@
 #include <optional>
 #include <utility>
 
-struct World;
-
-struct BlockHit {
-  Vector3Int position;
-  Vector3Int face_normal;
-};
+class PlayerController;
 
 class PhysicsWorld {
 public:
   using Layer = std::uint16_t;
+  using BodyId = std::uint32_t;
   using CollisionPair = std::pair<Layer, Layer>;
 
   enum class Motion {
@@ -36,7 +31,16 @@ public:
     CollisionPair{MOVING, MOVING}
   };
 
+  // A move-only owning handle. Destroying it removes its Jolt body.
+  // PhysicsWorld must outlive every Cube it created.
   struct Cube {
+    Cube(const Cube&) = delete;
+    Cube& operator=(const Cube&) = delete;
+    Cube(Cube&& other) noexcept;
+    Cube& operator=(Cube&& other) noexcept;
+    ~Cube();
+
+    BodyId id() const;
     Vector3 position() const;
     void set_position(Vector3 position);
     Vector3 velocity() const;
@@ -46,10 +50,19 @@ public:
 
   private:
     friend class PhysicsWorld;
-    Cube(PhysicsWorld* world, std::uint32_t id, Vector3 size);
-    PhysicsWorld* world_;
-    std::uint32_t id_;
-    Vector3 size_;
+    Cube(PhysicsWorld* world, BodyId id, Vector3 size);
+    void release() noexcept;
+
+    PhysicsWorld* world_ = nullptr;
+    BodyId id_ = 0;
+    Vector3 size_{};
+  };
+
+  struct RayHit {
+    BodyId body_id;
+    Vector3 position;
+    Vector3 normal;
+    float distance;
   };
 
   PhysicsWorld();
@@ -64,18 +77,55 @@ public:
     Motion motion = Motion::Dynamic
   );
 
-  void set_blocks(const World& world, Layer layer);
-  void create_player(Vector3 feet, Vector3 size, Layer layer);
-  void reset_player(Vector3 feet);
-  void move_player(Vector3 horizontal_velocity, bool jump, float dt);
-  Vector3 player_position() const;
-  Vector3 player_velocity() const;
-  bool player_grounded() const;
-  std::optional<BlockHit> raycast_block(
-    Vector3 origin, Vector3 direction, float reach
+  std::optional<RayHit> raycast(
+    Vector3 origin,
+    Vector3 direction,
+    float reach
   ) const;
 
   void update(float dt);
+
+private:
+  friend class PlayerController;
+  friend struct Cube;
+
+  void remove_body(BodyId id) noexcept;
+
+  struct Impl;
+  std::unique_ptr<Impl> impl;
+};
+
+// Only physics-related player state lives here. Input polling, block editing
+// and block IDs remain game code. Camera3D is owned here so looking and
+// walking use the same orientation.
+struct PlayerMovementInput {
+  Vector2 movement{};  // x: forward/back, y: strafe right/left
+  Vector2 look_delta{};
+  bool jump = false;
+};
+
+class PlayerController {
+public:
+  PlayerController(
+    PhysicsWorld& physics,
+    Camera3D camera,
+    Vector3 feet,
+    Vector3 size,
+    PhysicsWorld::Layer layer
+  );
+  ~PlayerController();
+
+  PlayerController(const PlayerController&) = delete;
+  PlayerController& operator=(const PlayerController&) = delete;
+
+  void update(const PlayerMovementInput& input, float frame_dt);
+  void reset(Vector3 feet);
+
+  Vector3 position() const;  // Centre of feet
+  Vector3 velocity() const;
+  bool grounded() const;
+  BoundingBox bounds() const;
+  const Camera3D& camera() const;
 
 private:
   struct Impl;
