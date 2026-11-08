@@ -52,7 +52,7 @@ int main() {
   while (!WindowShouldClose()) {
     PlayerInput input = PlayerInput::poll();
 
-    if (input.reset_world) {
+    if (input.wants_reset()) {
       reset(world, colliders, player, controller);
     }
 
