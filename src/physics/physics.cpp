@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 #include <utility>
 #include <unordered_set>
 #include <cassert>
@@ -558,7 +559,7 @@ void PlayerController::update(
 
   impl->yaw += input.look_delta.x * sensitivity;
   impl->pitch -= input.look_delta.y * sensitivity;
-  constexpr float pitch_limit = JPH::DegreesToRadians(90.0f) - 0.01f;
+  constexpr float pitch_limit = std::numbers::pi_v<float> / 2.0f - 0.01f;
   impl->pitch = std::clamp(impl->pitch, -pitch_limit, pitch_limit);
 
   const float cy = std::cos(impl->yaw);
