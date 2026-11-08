@@ -1,34 +1,31 @@
 #pragma once
 
-#include <raylib.h>
-#include <raymath.h>
-#include <optional>
-#include <iostream>
-
 #include "physics/physics.h"
 #include "world.h"
+#include "world_physics.h"
+#include "player_input.h"
 
-struct Player {
-  Vector3 position{};  // Centre of the feet, synchronised from Jolt
-  Vector3 velocity{};
-  bool grounded = false;
-  float yaw = 0.0f;
-  float pitch = 0.0f;
+#include <optional>
 
-  BoundingBox get_bounds() const;
-  Vector3 movement_velocity(Vector3 direction, const Camera& camera) const;
-
-  std::optional<BlockHit> target = std::nullopt;
-  void find_target(const PhysicsWorld& physics, const Camera& camera);
-  bool manipulate_blocks(World& world, bool place, bool remove);
-
-  Vector3 get_forward() const;
-  Camera3D get_camera() const;
-
-private:
-  static constexpr float player_width = 0.6f;
-  static constexpr float player_height = 1.8f;
-  static constexpr float xz_movement_speed = 4.0f;
+// Minecraft-specific player actions. Physics and camera live in
+// PlayerController; this class only manages block interaction.
+struct BlockHit {
+  Vector3Int position;
+  Vector3Int face_normal;
 };
 
-std::ostream& operator<<(std::ostream& os, const Player& player);
+struct Player {
+  std::optional<BlockHit> target;
+
+  void find_target(
+    const PhysicsWorld& physics,
+    const WorldPhysics& colliders,
+    const Camera3D& camera
+  );
+
+  void manipulate_blocks(
+    World& world,
+    WorldPhysics& colliders,
+    const PlayerInput& input
+  );
+};
