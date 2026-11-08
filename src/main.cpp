@@ -92,9 +92,6 @@ int main() {
 		}
 
 		
-
-
-		// todo: optimise -> don't create new camera every frame!
 		camera = player.get_camera();
 
 

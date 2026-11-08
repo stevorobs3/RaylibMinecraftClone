@@ -2,9 +2,7 @@
 #include <raylib.h>
 #include <raymath.h>
 #include <optional>
-#include <format>
 #include <iostream>
-#include <numbers>
 
 #include "vector.h"
 #include "world.h"
@@ -46,17 +44,6 @@ struct Player {
 	Vector3 get_forward() const;
 	Camera3D get_camera() const;
 
-	friend std::ostream& operator<<(std::ostream &os, const Player &player) {
-		auto bb = player.get_bounds();
-		std::string player_str = std::format("Player(pos={:.2f},{:.2f},{:.2f}, vel={:.2f},{:.2f},{:.2f}, bb={:.2f},{:.2f},{:.2f}->{:.2f},{:.2f},{:.2f})", 
-			player.position.x,player.position.y,player.position.z,
-			player.velocity.x,player.velocity.y,player.velocity.z,
-			bb.min.x,bb.min.y,bb.min.z,
-			bb.max.x,bb.max.y,bb.max.z);
-
-		os << player_str;
-		return os;
-	}
 
 private:
 
@@ -66,3 +53,5 @@ private:
 	static constexpr float jump_height = 2.0f; // m
 	static constexpr float xz_movement_speed = 4.0f; // in m/s
 };
+
+std::ostream& operator<<(std::ostream &os, const Player &player);

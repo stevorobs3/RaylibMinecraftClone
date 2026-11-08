@@ -227,3 +227,15 @@ Camera3D Player::get_camera() const {
 		.projection = CAMERA_PERSPECTIVE
 	};
 }
+
+std::ostream& operator<<(std::ostream &os, const Player &player) {
+	auto bb = player.get_bounds();
+	std::string player_str = std::format("Player(pos={:.2f},{:.2f},{:.2f}, vel={:.2f},{:.2f},{:.2f}, bb={:.2f},{:.2f},{:.2f}->{:.2f},{:.2f},{:.2f})", 
+		player.position.x,player.position.y,player.position.z,
+		player.velocity.x,player.velocity.y,player.velocity.z,
+		bb.min.x,bb.min.y,bb.min.z,
+		bb.max.x,bb.max.y,bb.max.z);
+
+	os << player_str;
+	return os;
+}
