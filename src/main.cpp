@@ -48,28 +48,33 @@ int main() {
   reset(world, colliders, player, controller);
   Renderer renderer(world, player, controller);
   SetTargetFPS(60);
+  bool show_physics_debug = false;
 
   while (!WindowShouldClose()) {
     PlayerInput input = PlayerInput::poll();
+    if (input.wants_toggle_debug()) {
+      show_physics_debug = !show_physics_debug;
+    }
 
     if (input.wants_reset()) {
       reset(world, colliders, player, controller);
     }
 
-    // Game actions use the current camera and Jolt raycast.
+    // Apply this frame's mouse look before raycasting.
+    controller.apply_look(input.look_delta);
     player.find_target(physics, colliders, controller.camera());
-    player.manipulate_blocks(world, colliders, input);
+    player.manipulate_blocks(world, colliders, input, controller);
 
-    // Jolt character movement and camera orientation are updated together.
+    // Jolt advances on fixed 60 Hz ticks, independent of render FPS.
     controller.update(input.movement_command(), GetFrameTime());
 
     BeginDrawing();
     ClearBackground(RAYWHITE);
     BeginMode3D(controller.camera());
     renderer.draw_world();
-    renderer.draw_player();
+    renderer.draw_player(show_physics_debug);
     EndMode3D();
-    renderer.draw_ui();
+    renderer.draw_ui(show_physics_debug);
     EndDrawing();
   }
 
