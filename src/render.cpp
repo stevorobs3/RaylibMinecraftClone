@@ -34,20 +34,8 @@ void Renderer::draw_player_target() {
   rlSetLineWidth(original_line_width);
 }
 
-void Renderer::draw_player(bool show_physics_debug) {
+void Renderer::draw_player(bool /*show_physics_debug*/) {
   DrawBoundingBox(controller.bounds(), BLACK);
-
-  if (show_physics_debug) {
-    // Jolt's actual collision capsule, in addition to the former AABB.
-    const auto bounds = controller.bounds();
-    const float radius = controller.capsule_radius();
-    const Vector3 feet = controller.position();
-    DrawCapsuleWires(
-      {feet.x, feet.y + radius, feet.z},
-      {feet.x, bounds.max.y - radius, feet.z},
-      radius, 4, 12, DARKGRAY
-    );
-  }
 
   if (player.target) {
     draw_player_target();
@@ -75,5 +63,23 @@ void Renderer::draw_ui(bool show_physics_debug) {
         normal.x, normal.y, normal.z),
       8, 58, 18, BLACK
     );
+
+    DrawText("Last jump presses (feet Y / VY / grounded / fired):",
+      8, 87, 16, BLACK);
+    const auto history = controller.recent_jump_presses();
+    for (std::size_t i = 0; i < controller.jump_press_count(); ++i) {
+      const auto& press = history[i];
+      DrawText(
+        TextFormat(
+          "%d: Y %.3f | Vy %.2f | %s | %s",
+          static_cast<int>(i + 1),
+          press.feet_y,
+          press.vertical_velocity,
+          press.grounded ? "ground" : "air",
+          press.executed ? "fired" : "not fired"
+        ),
+        8, 108 + static_cast<int>(i) * 21, 16, BLACK
+      );
+    }
   }
 }
