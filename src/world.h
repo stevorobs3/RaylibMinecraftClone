@@ -45,6 +45,7 @@ struct World {
 
 
 	void initialise() {
+    storage.fill(Block{}); // Reset player-edited blocks too.
 		for (int x = 0; x < n; x++) {
 			for (int z = 0; z < n; z++) {
 				auto block_type = (x + z) % 2 == 0 ? BlockType::Grass : BlockType::Dirt;

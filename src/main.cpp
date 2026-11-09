@@ -1,120 +1,79 @@
 #include <raylib.h>
-#include <rlgl.h>
 
 #include "player.h"
+#include "player_controller.h"
+#include "player_input.h"
 #include "world.h"
+#include "world_physics.h"
 #include "render.h"
-#include "physics/physics.h"
 
-
-void reset(World &world, Player &player) {
-	
-	world.initialise();
-
-	player.position = {2, 3, 2};
-
+void reset(
+  World& world,
+  Player& player,
+  PlayerController& controller,
+  const WorldPhysics& physics
+) {
+  world.initialise();
+  controller.reset({2.0f, 3.0f, 2.0f}, physics);
+  player.target.reset();
 }
 
 int main() {
-	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	InitWindow(1280, 720, "Raylib minecraft clone");
-	DisableCursor();
-	PollInputEvents();
+  SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+  InitWindow(1280, 720, "Raylib minecraft clone");
+  DisableCursor();
+  PollInputEvents();
 
-	PhysicsWorld physics;
+  World world;
+  WorldPhysics physics(world);
+  Player player;
 
+  const Camera3D camera{
+    .position = {2.0f, 4.62f, 2.0f},
+    .target = {3.0f, 4.62f, 2.0f},
+    .up = {0.0f, 1.0f, 0.0f},
+    .fovy = 75.0f,
+    .projection = CAMERA_PERSPECTIVE
+  };
 
-	// initialise state of the world
-	
-	// todo: put everything in one struct and build it in one place.
+  PlayerController controller(
+    camera,
+    {2.0f, 3.0f, 2.0f},
+    {0.6f, 1.8f, 0.6f}
+  );
+  reset(world, player, controller, physics);
+  Renderer renderer(world, player, controller);
+  SetTargetFPS(60);
+  bool show_physics_debug = false;
 
-	// todo: add reset functionality for easy testing
-	
-	World world;
-	Player player;
-	
-	reset(world, player);
-	
-	Renderer renderer(world, player);
-	SetTargetFPS(60);
+  while (!WindowShouldClose()) {
+    const PlayerInput input = PlayerInput::poll();
 
-	Camera3D camera = player.get_camera();
+    if (input.wants_toggle_debug()) {
+      show_physics_debug = !show_physics_debug;
+    }
+    if (input.wants_reset()) {
+      reset(world, player, controller, physics);
+    }
 
+    // The targeting ray sees the mouse movement of this frame.
+    controller.apply_look(input.look_delta);
+    player.find_target(world, controller.camera());
+    player.manipulate_blocks(world, physics, controller, input);
 
-	while (!WindowShouldClose()) {
-		// User input
-		if (IsKeyPressed(KEY_R)) {
-			reset(world, player);
-		}
-		
-		bool should_delete_target_block = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-		bool should_create_new_block = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
-		bool jump_button_pressed = IsKeyPressed(KEY_SPACE);
+    // Constant-acceleration movement and AABB collisions at 60 Hz.
+    controller.update(input.movement_command(), GetFrameTime(), physics);
 
-		Vector2 mouse_delta = GetMouseDelta();
+    BeginDrawing();
+    ClearBackground(RAYWHITE);
+    BeginMode3D(controller.camera());
+    renderer.draw_world();
+    renderer.draw_player();
+    EndMode3D();
+    renderer.draw_ui(show_physics_debug);
+    EndDrawing();
+  }
 
-		Vector3 h_movement = Vector3(
-			// Move forward-backward
-			(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) -
-			(IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)),
-			0,
-			// Move right-left
-			(IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) -
-			(IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)));
-
-		float modifier = 0.002f;
-
-		player.yaw += mouse_delta.x * modifier;
-		player.pitch -= mouse_delta.y * modifier;
-
-		constexpr float pitch_limit = std::numbers::pi_v<float> / 2.0f - 0.01f;
-
-		player.pitch = std::clamp(
-				player.pitch,
-				-pitch_limit,
-				pitch_limit
-		);
-
-
-
-		float dt = GetFrameTime();
-		
-		// game logic and mutating game state
-		player.find_target(world, camera);
-		
-		// todo: later use enum or something to distinguish mode
-		player.manipulate_blocks(world, should_create_new_block, should_delete_target_block);
-
-		Vector3 previous_position = player.position; 
-		player.apply_xz_movement(h_movement, camera, dt);
-		player.apply_physics(dt);
-		player.apply_collisions(world, previous_position);
-		// jump requires grounded to be calculated from apply_collisions
-		if (jump_button_pressed) {
-			player.jump();		
-		}
-
-		
-		camera = player.get_camera();
-
-
-		// rendering
-		BeginDrawing();
-		ClearBackground(RAYWHITE);
-
-		BeginMode3D(camera);
-		
-		renderer.draw_world();
-		renderer.draw_player();
-
-		EndMode3D();
-		
-		renderer.draw_ui();
-		
-		EndDrawing();
-	}
-
-	CloseWindow();
-	return 0;
+  CloseWindow();
+  return 0;
 }
-
