@@ -105,6 +105,13 @@ struct PlayerMovementInput {
 
 class PlayerController {
 public:
+  struct JumpPress {
+    float feet_y = 0.0f;
+    float vertical_velocity = 0.0f;
+    bool grounded = false;
+    bool executed = false;
+  };
+
   PlayerController(
     PhysicsWorld& physics,
     Camera3D camera,
@@ -129,7 +136,11 @@ public:
   const char* ground_state_name() const;
   Vector3 ground_normal() const;
   bool overlaps_cube(Vector3 centre, Vector3 size) const;
-  float capsule_radius() const;
+  // Three most recent jump-button presses, newest first.
+  // Positions are sampled when the button was pressed, not when
+  // a buffered jump was eventually executed.
+  std::array<JumpPress, 3> recent_jump_presses() const;
+  std::size_t jump_press_count() const;
   BoundingBox bounds() const;
   const Camera3D& camera() const;
 
