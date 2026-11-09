@@ -468,8 +468,9 @@ struct PlayerController::Impl {
   JPH::Ref<JPH::CharacterVirtual> character;
   PhysicsWorld::Layer layer = 0;
   Vector3 size{};
-  float radius = 0.0f;
   Camera3D camera{};
+  std::array<PlayerController::JumpPress, 3> recent_jumps{};
+  std::size_t jump_count = 0;
   float yaw = 0.0f;
   float pitch = 0.0f;
   float step_accumulator = 0.0f;
@@ -502,16 +503,14 @@ PlayerController::PlayerController(
   Vector3 size,
   PhysicsWorld::Layer layer
 ) : impl(std::make_unique<Impl>()) {
-  const float radius = 0.5f * std::min(size.x, size.z);
   if (layer >= layer_count ||
-      size.x <= 0.0f || size.y < 2.0f * radius || size.z <= 0.0f) {
+      size.x <= 0.0f || size.y <= 0.0f || size.z <= 0.0f) {
     throw std::invalid_argument("Invalid player size or layer");
   }
 
   impl->world = &physics;
   impl->layer = layer;
   impl->size = size;
-  impl->radius = radius;
   impl->camera = camera;
 
   Vector3 forward{
@@ -527,13 +526,13 @@ PlayerController::PlayerController(
     impl->pitch = std::asin(std::clamp(forward.y / length, -1.0f, 1.0f));
   }
 
-  // The capsule is centred on the feet at Y + height/2, and the
-  // bottom of its lower hemisphere is at the character's feet.
-  JPH::CapsuleShapeSettings capsule{
-    0.5f * (size.y - 2.0f * radius),
-    radius
+  // Minecraft's standing player uses an axis-aligned cuboid.
+  // Its lower face starts at the character's feet (local Y = 0).
+  JPH::BoxShapeSettings box{
+    JPH::Vec3{size.x * 0.5f, size.y * 0.5f, size.z * 0.5f},
+    0.0f
   };
-  const auto shape = capsule.Create();
+  const auto shape = box.Create();
   if (shape.HasError()) {
     throw std::runtime_error(shape.GetError().c_str());
   }
@@ -542,9 +541,9 @@ PlayerController::PlayerController(
   settings.mShape = shape.Get();
   settings.mShapeOffset = JPH::Vec3{0.0f, size.y * 0.5f, 0.0f};
   settings.mMaxSlopeAngle = JPH::DegreesToRadians(50.0f);
-  // Only contacts near the bottom cap can support the player.
-  // Otherwise contacts against walls can cause false grounded states.
-  settings.mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(), -radius);
+  // The position is at the feet: only contacts within 0.1 m
+  // of that level can support this cuboid, not side contacts higher up.
+  settings.mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(), -0.1f);
   settings.mEnhancedInternalEdgeRemoval = true;
 
   impl->character = new JPH::CharacterVirtual(
@@ -564,6 +563,8 @@ void PlayerController::reset(Vector3 feet) {
   character.SetLinearVelocity(JPH::Vec3::sZero());
   impl->step_accumulator = 0.0f;
   impl->jump_buffer = 0.0f;
+  impl->jump_count = 0;
+  impl->recent_jumps = {};
 
   CharacterLayerFilter filter{impl->layer};
   character.RefreshContacts(
@@ -595,8 +596,23 @@ void PlayerController::update(
   constexpr float jump_buffer_duration = 0.1f;
 
   if (input.jump) {
-    // Remember a press even if this render frame has no physics tick,
-    // or the character lands a few ticks after the press.
+    // Capture the feet Y and state at the exact render frame when
+    // the jump key was pressed, before any fixed simulation ticks.
+    for (std::size_t i = impl->recent_jumps.size() - 1; i > 0; --i) {
+      impl->recent_jumps[i] = impl->recent_jumps[i - 1];
+    }
+    impl->recent_jumps[0] = JumpPress{
+      .feet_y = position().y,
+      .vertical_velocity = velocity().y,
+      .grounded = grounded(),
+      .executed = false
+    };
+    impl->jump_count = std::min(
+      impl->jump_count + 1,
+      impl->recent_jumps.size()
+    );
+
+    // Retain presses across a few ticks for the jump buffer.
     impl->jump_buffer = jump_buffer_duration;
   }
 
@@ -634,6 +650,9 @@ void PlayerController::update(
     if (impl->jump_buffer > 0.0f && can_jump) {
       vertical = std::sqrt(-2.0f * gravity * jump_height);
       impl->jump_buffer = 0.0f;
+      if (impl->jump_count != 0) {
+        impl->recent_jumps[0].executed = true;
+      }
       jumped = true;
     } else if (grounded && vertical < 0.0f) {
       vertical = 0.0f;
@@ -723,8 +742,13 @@ bool PlayerController::overlaps_cube(Vector3 centre, Vector3 size) const {
   return collector.HadHit() && collector.mHit.mPenetrationDepth > 0.005f;
 }
 
-float PlayerController::capsule_radius() const {
-  return impl->radius;
+std::array<PlayerController::JumpPress, 3>
+PlayerController::recent_jump_presses() const {
+  return impl->recent_jumps;
+}
+
+std::size_t PlayerController::jump_press_count() const {
+  return impl->jump_count;
 }
 
 BoundingBox PlayerController::bounds() const {
