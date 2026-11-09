@@ -474,6 +474,7 @@ struct PlayerController::Impl {
   float pitch = 0.0f;
   float step_accumulator = 0.0f;
   float jump_buffer = 0.0f;
+  bool world_grounded = false;
 
   void sync_camera() {
     Vector3 feet = from_jolt_vec(character->GetPosition());
@@ -488,11 +489,6 @@ struct PlayerController::Impl {
     };
   }
 
-  bool on_walkable_ground() const {
-    return character->GetGroundState() ==
-      JPH::CharacterBase::EGroundState::OnGround &&
-      !character->IsSlopeTooSteep(character->GetGroundNormal());
-  }
 };
 
 PlayerController::PlayerController(
@@ -562,6 +558,7 @@ void PlayerController::reset(Vector3 feet) {
   character.SetLinearVelocity(JPH::Vec3::sZero());
   impl->step_accumulator = 0.0f;
   impl->jump_buffer = 0.0f;
+  impl->world_grounded = false;
   impl->jump_count = 0;
   impl->recent_jumps = {};
 
@@ -586,7 +583,9 @@ void PlayerController::apply_look(Vector2 mouse_delta) {
 }
 
 void PlayerController::update(
-  const PlayerMovementInput& input, float frame_dt
+  const PlayerMovementInput& input,
+  float frame_dt,
+  const std::function<bool(BoundingBox)>& has_floor
 ) {
   constexpr float move_speed = 4.0f;
   constexpr float gravity = -9.81f;
@@ -603,7 +602,7 @@ void PlayerController::update(
     impl->recent_jumps[0] = JumpPress{
       .feet_y = position().y,
       .vertical_velocity = velocity().y,
-      .grounded = grounded(),
+      .grounded = has_floor(bounds()) && velocity().y <= 0.1f,
       .executed = false
     };
     impl->jump_count = std::min(
@@ -640,7 +639,9 @@ void PlayerController::update(
     impl->world->update(fixed_dt);
 
     float vertical = character.GetLinearVelocity().GetY();
-    const bool grounded = impl->on_walkable_ground();
+    // Gameplay ground test: only the top face of a solid voxel can
+    // support the player's feet, independent of Jolt's wedged contacts.
+    const bool grounded = has_floor(bounds());
 
     // Never accept a jump merely because a wall reports a support contact,
     // nor while the character still has upward vertical velocity.
@@ -674,6 +675,8 @@ void PlayerController::update(
     impl->step_accumulator -= fixed_dt;
   }
 
+  impl->world_grounded =
+    has_floor(bounds()) && character.GetLinearVelocity().GetY() <= 0.1f;
   impl->sync_camera();
 }
 
@@ -686,7 +689,7 @@ Vector3 PlayerController::velocity() const {
 }
 
 bool PlayerController::grounded() const {
-  return impl->on_walkable_ground();
+  return impl->world_grounded;
 }
 
 const char* PlayerController::ground_state_name() const {
