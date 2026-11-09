@@ -4,6 +4,7 @@
 #include "physics/physics.h"
 
 #include <array>
+#include <cmath>
 #include <optional>
 #include <unordered_map>
 #include <utility>
@@ -53,6 +54,36 @@ public:
       by_body_.erase(collider->id());
       collider.reset();
     }
+  }
+
+  // Gameplay support rule for the current full-cube voxel world.
+  // Only a block's TOP face can support the player's feet.
+  bool is_grounded(const World& world, BoundingBox player) const {
+    constexpr float height_tolerance = 0.04f; // Jolt contact padding
+    constexpr float edge_tolerance = 0.002f;  // Ignore merely touching edges
+
+    for (auto&& [block, x, y, z] : world.blocks_with_positions()) {
+      if (block.block_type == BlockType::Air) {
+        continue;
+      }
+
+      const float top = static_cast<float>(y) + 1.0f;
+      if (std::abs(player.min.y - top) > height_tolerance) {
+        continue;
+      }
+
+      const bool overlaps_x =
+        player.max.x > static_cast<float>(x) + edge_tolerance &&
+        player.min.x < static_cast<float>(x) + 1.0f - edge_tolerance;
+      const bool overlaps_z =
+        player.max.z > static_cast<float>(z) + edge_tolerance &&
+        player.min.z < static_cast<float>(z) + 1.0f - edge_tolerance;
+
+      if (overlaps_x && overlaps_z) {
+        return true;
+      }
+    }
+    return false;
   }
 
   std::optional<Vector3Int> block_for(PhysicsWorld::BodyId id) const {
