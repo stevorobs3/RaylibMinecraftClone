@@ -51,7 +51,7 @@ void Renderer::draw_ui(bool show_physics_debug) {
     const Vector3 velocity = controller.velocity();
     DrawText(
       TextFormat(
-        "Jolt: %s | walkable: %s | vy: %.2f",
+        "Jolt: %s | voxel grounded: %s | vy: %.2f",
         controller.ground_state_name(),
         controller.grounded() ? "yes" : "no",
         velocity.y
