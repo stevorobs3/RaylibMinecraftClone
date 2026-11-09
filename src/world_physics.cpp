@@ -36,8 +36,9 @@ bool WorldPhysics::overlaps_block(BoundingBox player, Vector3Int cell) const {
 }
 
 bool WorldPhysics::is_grounded(BoundingBox player) const {
-  // Accept small numerical gaps, but only exposed block TOP faces.
-  constexpr float height_tolerance = 0.04f;
+  // With our own collision resolution, feet snap exactly to block tops.
+  // Allow only floating-point noise, not Jolt's former 4 cm padding.
+  constexpr float height_tolerance = 0.002f;
   constexpr float edge_tolerance = 0.002f;
 
   for (auto&& [block, x, y, z] : world_.blocks_with_positions()) {
