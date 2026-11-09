@@ -29,21 +29,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(mdspan)
 
-# Jolt Physics
-set(OVERRIDE_CXX_FLAGS OFF CACHE BOOL "" FORCE)
-set(INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
-set(ENABLE_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
-set(ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-
-FetchContent_Declare(
-		JoltPhysics
-		URL https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v5.6.0.zip
-		SOURCE_SUBDIR Build
-		DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-
-FetchContent_MakeAvailable(JoltPhysics)
-
 file(GLOB SOURCES CONFIGURE_DEPENDS
 		"${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
@@ -54,22 +39,9 @@ target_compile_definitions(minecraft_clone PRIVATE
 		RAYMATH_ENABLE_CPP_OPERATORS
 )
 
-add_library(GamePhysics STATIC
-		src/physics/physics.cpp
-)
-
-target_include_directories(GamePhysics
-		PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
-)
-
-target_link_libraries(GamePhysics
-		PRIVATE Jolt raylib
-)
-
 target_link_libraries(minecraft_clone PRIVATE
-		raylib
-		std::mdspan
-		GamePhysics
+  raylib
+  std::mdspan
 )
 # Deliberately use raylib 6.2's bundled GLAD declarations. This is an
 # internal raylib header; keep the raylib version pinned above.
