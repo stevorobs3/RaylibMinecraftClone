@@ -66,7 +66,13 @@ int main() {
     player.manipulate_blocks(world, colliders, input, controller);
 
     // Jolt advances on fixed 60 Hz ticks, independent of render FPS.
-    controller.update(input.movement_command(), GetFrameTime());
+    controller.update(
+      input.movement_command(),
+      GetFrameTime(),
+      [&](BoundingBox bounds) {
+        return colliders.is_grounded(world, bounds);
+      }
+    );
 
     BeginDrawing();
     ClearBackground(RAYWHITE);
