@@ -37,7 +37,7 @@ bool WorldPhysics::overlaps_block(BoundingBox player, Vector3Int cell) const {
 
 bool WorldPhysics::is_grounded(BoundingBox player) const {
   // With our own collision resolution, feet snap exactly to block tops.
-  // Allow only floating-point noise, not Jolt's former 4 cm padding.
+  // Allow only floating-point noise; landing snaps to exact block tops.
   constexpr float height_tolerance = 0.002f;
   constexpr float edge_tolerance = 0.002f;
 
