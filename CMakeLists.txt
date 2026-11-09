@@ -46,3 +46,18 @@ target_link_libraries(minecraft_clone PRIVATE
 # Deliberately use raylib 6.2's bundled GLAD declarations. This is an
 # internal raylib header; keep the raylib version pinned above.
 target_include_directories(minecraft_clone PRIVATE "${raylib_SOURCE_DIR}/src")
+
+# Small regression tests; no additional dependencies.
+include(CTest)
+if(BUILD_TESTING)
+  add_executable(voxel_physics_tests
+    tests/voxel_physics_tests.cpp
+    src/world_physics.cpp
+    src/player_controller.cpp
+  )
+  target_include_directories(voxel_physics_tests PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  )
+  target_link_libraries(voxel_physics_tests PRIVATE raylib std::mdspan)
+  add_test(NAME voxel_physics COMMAND voxel_physics_tests)
+endif()
