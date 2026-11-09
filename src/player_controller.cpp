@@ -103,14 +103,12 @@ void PlayerController::update(
     float vertical = velocity_.y;
     const bool can_jump = supported && vertical <= 0.1f;
 
-    bool jumped = false;
     if (jump_buffer_ > 0.0f && can_jump) {
       vertical = std::sqrt(2.0f * -gravity * jump_height);
       jump_buffer_ = 0.0f;
       if (jump_count_ > 0) {
         recent_jumps_[0].executed = true;
       }
-      jumped = true;
     } else if (supported && vertical < 0.0f) {
       vertical = 0.0f;
     }
