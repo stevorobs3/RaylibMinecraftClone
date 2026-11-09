@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -127,7 +128,13 @@ public:
   // Look is applied before raycast / block interaction each render frame.
   void apply_look(Vector2 mouse_delta);
   // Movement and Jolt simulation advance on fixed 60 Hz ticks.
-  void update(const PlayerMovementInput& input, float frame_dt);
+  // The game supplies its grounded rule; Jolt remains responsible for collisions.
+  // Called at each fixed physics tick with the current player bounds.
+  void update(
+    const PlayerMovementInput& input,
+    float frame_dt,
+    const std::function<bool(BoundingBox)>& has_floor
+  );
   void reset(Vector3 feet);
 
   Vector3 position() const;  // Centre of feet
