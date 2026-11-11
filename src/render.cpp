@@ -3,6 +3,8 @@
 
 #include "render.h"
 
+
+// todo: use meches instead of raw cubes here!
 void Renderer::draw_world() {
   DrawGrid(10, 1);
   for (auto&& [block, x, y, z] : world.blocks_with_positions()) {

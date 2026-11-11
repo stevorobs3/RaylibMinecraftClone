@@ -18,6 +18,7 @@ struct Block {
 };
 
 
+// todo: Chunks of 24 16*16*16 sections
 using Blocks = std::experimental::mdspan<
 		Block,
 		std::experimental::dextents<std::size_t, 3>

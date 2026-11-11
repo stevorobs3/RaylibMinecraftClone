@@ -40,6 +40,8 @@ bool WorldPhysics::is_grounded(BoundingBox player) const {
   constexpr float height_tolerance = 0.04f;
   constexpr float edge_tolerance = 0.002f;
 
+  //todo: Only check small area around player
+  // OR: do proper AABB check
   for (auto&& [block, x, y, z] : world_.blocks_with_positions()) {
     if (block.block_type == BlockType::Air) {
       continue;
@@ -90,6 +92,8 @@ void WorldPhysics::move_player(
                         axis == 'y' ? &feet.y : &feet.z;
     *coordinate += delta;
 
+    // todo: only look at small area around player
+    // we know exactly which blocks are touched based on player position and BB
     for (auto&& [block, x, y, z] : world_.blocks_with_positions()) {
       if (block.block_type == BlockType::Air ||
           !overlap(player_bounds(feet, size), block_bounds(x, y, z))) {
