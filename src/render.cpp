@@ -2,20 +2,26 @@
 #include <rlgl.h>
 
 #include "render.h"
+#include "world.h"
 
 
+bool first_frame = true;
 // todo: use meches instead of raw cubes here!
 void Renderer::draw_world() {
   DrawGrid(10, 1);
-  for (auto&& [block, x, y, z] : world.blocks_with_positions()) {
-    if (block.block_type != BlockType::Air) {
-      const Color color = block_color.at(block.block_type);
+  for (auto [block_type, x, y, z] : world.block_types_with_positions()) {
+    if (block_type != BlockType::Air) {
+      const Color color = block_color.at(block_type);
+      if (first_frame) {
+        // std::cout << std::format("x,y,z = {},{},{}", x,y,z) << std::endl;
+      }
       DrawCube(
         {x + 0.5f, y + 0.5f, z + 0.5f},
         1, 1, 1, color
       );
     }
   }
+  first_frame = false;
 }
 
 void Renderer::draw_player_target() {
@@ -52,28 +58,10 @@ void Renderer::draw_ui(bool show_physics_debug) {
   const Vector3 velocity = controller.velocity();
   DrawText(
     TextFormat(
-      "Voxel grounded: %s | Feet Y: %.3f | Vy: %.2f",
-      controller.grounded() ? "yes" : "no",
-      feet.y, velocity.y
+      "Feet: %.3f,%.3f,%.3f",
+      feet.x, feet.y, feet.z
     ),
     8, 35, 18, BLACK
   );
 
-  DrawText("Last jump presses (feet Y / VY / grounded / fired):",
-    8, 66, 16, BLACK);
-  const auto history = controller.recent_jump_presses();
-  for (std::size_t i = 0; i < controller.jump_press_count(); ++i) {
-    const auto& press = history[i];
-    DrawText(
-      TextFormat(
-        "%d: Y %.3f | Vy %.2f | %s | %s",
-        static_cast<int>(i + 1),
-        press.feet_y,
-        press.vertical_velocity,
-        press.grounded ? "ground" : "air",
-        press.executed ? "fired" : "not fired"
-      ),
-      8, 87 + static_cast<int>(i) * 21, 16, BLACK
-    );
-  }
 }

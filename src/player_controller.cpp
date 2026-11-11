@@ -25,7 +25,6 @@ PlayerController::PlayerController(
 }
 
 void PlayerController::sync_camera() {
-  constexpr float eye_height = 1.62f;
   const float cp = std::cos(pitch_);
   camera_.position = {feet_.x, feet_.y + eye_height, feet_.z};
   camera_.target = {

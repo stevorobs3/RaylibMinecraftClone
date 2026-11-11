@@ -4,8 +4,12 @@
 #include <array>
 #include <ranges>
 #include <tuple>
+#include <iostream>
+#include <format>
 
 #include "vector.h"
+
+
 
 enum class BlockType {
 		Air,
@@ -13,28 +17,61 @@ enum class BlockType {
 		Dirt
 };
 
-struct Block {
-	BlockType block_type = BlockType::Air;
+using Blocks = std::experimental::mdspan<
+    BlockType,
+    std::experimental::dextents<std::size_t, 3>
+  >;
+
+using ConstBlocks = std::experimental::mdspan<
+    const BlockType,
+    std::experimental::dextents<std::size_t, 3>
+  >;
+
+
+struct ChunkSection {
+
+  Blocks blocks() {
+    return Blocks(storage.data(), n, n, n);
+  }
+
+  ConstBlocks const_blocks() const {
+    return ConstBlocks(storage.data(), n, n, n);
+  }
+
+  void fill(BlockType block_type) {
+    storage.fill(block_type);
+  }
+
+  static constexpr int n = 16;
+  static constexpr int blockCount = n * n * n;
+  
+private:
+  // todo: packedArray based on palette
+  std::array<BlockType, blockCount> storage{};
+
+};
+
+struct Chunk {
+
+  void fill_section(BlockType block_type, int i) {
+    chunk_sections[i].fill(block_type);
+  }
+  void fill(BlockType block_type) {
+    for (auto & chunk_section : chunk_sections) {
+      chunk_section.fill(block_type);
+    }
+  }
+
+  static constexpr int n_sections = 4;
+  std::array<ChunkSection, n_sections> chunk_sections{};
+
 };
 
 
-// todo: Chunks of 24 16*16*16 sections
-using Blocks = std::experimental::mdspan<
-		Block,
-		std::experimental::dextents<std::size_t, 3>
-	>;
-
-using ConstBlocks = std::experimental::mdspan<
-		const Block,
-		std::experimental::dextents<std::size_t, 3>
-	>;
-
 
 struct World {
-	Blocks blocks;
-
+  
 	World() {
-		blocks = Blocks(storage.data(), n, height, n);
 		initialise();
 	}
 
@@ -45,43 +82,82 @@ struct World {
 	World& operator=(World &&world) = delete;
 
 
-	void initialise() {
-    storage.fill(Block{}); // Reset player-edited blocks too.
-		for (int x = 0; x < n; x++) {
-			for (int z = 0; z < n; z++) {
-				auto block_type = (x + z) % 2 == 0 ? BlockType::Grass : BlockType::Dirt;
-				blocks[x,0,z] = Block(block_type);
-			}
-		}
 
-		for(int i = 0; i < n; i++) {
-			blocks[i,1,n-1].block_type = BlockType::Grass;
-		}
+	void initialise() {
+    for(Chunk &chunk : chunks) {
+      chunk.fill(BlockType::Air); // Reset player-edited blocks too.
+    
+      auto blocks = chunk.chunk_sections[0].blocks();
+      for (int x = 0; x < ChunkSection::n; x++) {
+        for (int z = 0; z < ChunkSection::n; z++) {
+          auto block_type = (x + z) % 2 == 0 ? BlockType::Grass : BlockType::Dirt;
+          blocks[x,0,z] = block_type;
+        }
+      }
+
+      // chunk.fill_section(BlockType::Grass, 1);
+    }    
 	}
 
 	bool contains(Vector3Int position) {
-		return position.x >= 0 && position.x < n &&
-			position.y >= 0 && position.y < height &&
-			position.z >= 0 && position.z < n;
+    int max_xz = n * ChunkSection::n;
+    int max_y = Chunk::n_sections * ChunkSection::n;
+
+		return position.x >= 0 && position.x < max_xz &&
+			position.y >= 0 && position.y < max_y &&
+			position.z >= 0 && position.z < max_xz;
 	}
 
-	auto blocks_with_positions() const {
-		return std::views::iota(0, blockCount)
-				| std::views::transform([this](int i) {
-						int x = i / (height * n);
-						int y = (i / n) % height;
-						int z = i % n;
+  BlockType get(int x, int y, int z) const {
+    int index = (x / ChunkSection::n) + n * (z / ChunkSection::n) ;
+    
+    int chunk_section_index = y / ChunkSection::n;
+    int section_x = x % ChunkSection::n;
+    int section_y = y % ChunkSection::n;
+    int section_z = z % ChunkSection::n;
+    // std::cout << std::format("section x,y,z: {},{},{}",section_x,section_y,section_z) << std::endl;
+    return chunks[index]
+      .chunk_sections[chunk_section_index]
+      .const_blocks()[section_x, section_y, section_z]; 
+  }
 
-						return std::tuple<const Block&, int, int, int>(
-								blocks[x, y, z], x, y, z
+  void set(int x, int y, int z, BlockType block_type) {
+    int index = (x / ChunkSection::n) + n * (z / ChunkSection::n) ;
+    
+    int chunk_section_index = y / ChunkSection::n;
+    int section_x = x % ChunkSection::n;
+    int section_y = y % ChunkSection::n;
+    int section_z = z % ChunkSection::n;
+    // std::cout << std::format("set block, {},{},{} {},{},{} {} {}",x,y,z,section_x,section_y,section_z, index, chunk_section_index) << std::endl;
+    chunks[index]
+      .chunk_sections[chunk_section_index]
+      .blocks()[section_x, section_y, section_z] = block_type; 
+  }
+
+  // todo: remove this - its terrible to use now!!!
+	auto block_types_with_positions() const {
+		return std::views::iota(0, block_count)
+        | std::views::transform([this](int i) {
+						int y = i / (width * width);
+						int z = (i % (width * width)) / width;
+						int x = (i % (width * width)) % width;
+            // std::cout << std::format("x,y,z= {},{},{}",x,y,z) << std::endl;
+            return std::tuple<BlockType, int, int, int>(
+								get(x, y, z), x, y, z
 						);
 				});
-}
-	static constexpr int n = 5;
-	static constexpr int height = 3;
-	static constexpr int blockCount = n * height * n;
+  }
+  static constexpr int n = 2;
+  static constexpr int num_chunks = n * n;
+  
+  static constexpr int height = Chunk::n_sections * ChunkSection::n;
+  static constexpr int width =  ChunkSection::n * n;
+  static constexpr int block_count = width * width * height; 
+  
 private:
-	std::array<Block, blockCount> storage{};
+  // number of chunks per x / z direction
+  std::array<Chunk, n * n> chunks{};
+
 
 
 };

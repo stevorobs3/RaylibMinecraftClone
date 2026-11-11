@@ -38,6 +38,9 @@ struct PlayerController {
   BoundingBox bounds() const;
   const Camera3D& camera() const;
 
+  static constexpr float eye_height = 1.62f;
+
+
   std::array<JumpPress, 3> recent_jump_presses() const;
   std::size_t jump_press_count() const;
 

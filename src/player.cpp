@@ -12,8 +12,8 @@ void Player::find_target(const World& world, const Camera3D& camera) {
 
   float nearest = 5.0f;
   target.reset();
-  for (auto&& [block, x, y, z] : world.blocks_with_positions()) {
-    if (block.block_type == BlockType::Air) {
+  for (auto&& [block_type, x, y, z] : world.block_types_with_positions()) {
+    if (block_type == BlockType::Air) {
       continue;
     }
     const BoundingBox bounds{
@@ -47,9 +47,7 @@ void Player::manipulate_blocks(
 
   const BlockHit hit = *target;
   if (input.wants_remove_block()) {
-    world.blocks[
-      hit.position.x, hit.position.y, hit.position.z
-    ].block_type = BlockType::Air;
+    world.set(hit.position.x, hit.position.y, hit.position.z, BlockType::Air);
     target.reset();
     return;
   }
@@ -59,11 +57,13 @@ void Player::manipulate_blocks(
     if (!world.contains(cell)) {
       return;
     }
+    // std::cout << std::format("hit: {},{},{}",hit.position.x,hit.position.y,hit.position.z) << std::endl;
+    // std::cout << std::format("normal: {},{},{}",hit.face_normal.x,hit.face_normal.y,hit.face_normal.z) << std::endl;
 
-    auto& block = world.blocks[cell.x, cell.y, cell.z];
-    if (block.block_type == BlockType::Air &&
+    BlockType block_type = world.get(cell.x, cell.y, cell.z);
+    if (block_type == BlockType::Air &&
         !physics.overlaps_block(controller.bounds(), cell)) {
-      block.block_type = BlockType::Dirt;
+      world.set(cell.x, cell.y, cell.z, BlockType::Dirt);
       target.reset();
     }
   }

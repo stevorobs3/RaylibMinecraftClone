@@ -1,4 +1,5 @@
 #include <raylib.h>
+#include "raymath.h"
 
 #include "player.h"
 #include "player_controller.h"
@@ -7,6 +8,9 @@
 #include "world_physics.h"
 #include "render.h"
 
+Vector3 player_initial_position{World::width / 2,World::height / 8, World::width / 2};
+
+
 void reset(
   World& world,
   Player& player,
@@ -14,7 +18,7 @@ void reset(
   const WorldPhysics& physics
 ) {
   world.initialise();
-  controller.reset({2.0f, 3.0f, 2.0f}, physics);
+  controller.reset(player_initial_position, physics);
   player.target.reset();
 }
 
@@ -28,9 +32,9 @@ int main() {
   WorldPhysics physics(world);
   Player player;
 
+  
   const Camera3D camera{
-    .position = {2.0f, 4.62f, 2.0f},
-    .target = {3.0f, 4.62f, 2.0f},
+    .position = player_initial_position + Vector3(0, PlayerController::eye_height, 0),
     .up = {0.0f, 1.0f, 0.0f},
     .fovy = 75.0f,
     .projection = CAMERA_PERSPECTIVE
@@ -38,9 +42,10 @@ int main() {
 
   PlayerController controller(
     camera,
-    {2.0f, 3.0f, 2.0f},
+    player_initial_position,
     {0.6f, 1.8f, 0.6f}
   );
+
   reset(world, player, controller, physics);
   Renderer renderer(world, player, controller);
   SetTargetFPS(60);

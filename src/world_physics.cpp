@@ -42,15 +42,15 @@ bool WorldPhysics::is_grounded(BoundingBox player) const {
 
   //todo: Only check small area around player
   // OR: do proper AABB check
-  for (auto&& [block, x, y, z] : world_.blocks_with_positions()) {
-    if (block.block_type == BlockType::Air) {
+  for (auto&& [block_type, x, y, z] : world_.block_types_with_positions()) {
+    if (block_type == BlockType::Air) {
       continue;
     }
 
     // The top of a block buried beneath another full cube isn't a
     // walkable surface. This also avoids false jumps at wall seams.
     if (y + 1 < World::height &&
-        world_.blocks[x, y + 1, z].block_type != BlockType::Air) {
+        world_.get(x, y + 1, z) != BlockType::Air) {
       continue;
     }
 
@@ -94,8 +94,8 @@ void WorldPhysics::move_player(
 
     // todo: only look at small area around player
     // we know exactly which blocks are touched based on player position and BB
-    for (auto&& [block, x, y, z] : world_.blocks_with_positions()) {
-      if (block.block_type == BlockType::Air ||
+    for (auto&& [block_type, x, y, z] : world_.block_types_with_positions()) {
+      if (block_type == BlockType::Air ||
           !overlap(player_bounds(feet, size), block_bounds(x, y, z))) {
         continue;
       }
