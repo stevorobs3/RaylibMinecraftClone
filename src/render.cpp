@@ -54,8 +54,8 @@ void Renderer::draw_ui(bool show_physics_debug, DebugTimers debug_timers, std::v
     return;
   }
 
-  const Vector3 feet = controller.position();
-  const Vector3 velocity = controller.velocity();
+  Vector3 feet = controller.feet;
+  Vector3 velocity = controller.velocity;
   DrawText(
     TextFormat(
       "Feet: %.3f,%.3f,%.3f",

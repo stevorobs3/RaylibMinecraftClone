@@ -2,11 +2,10 @@
 
 #include <raylib.h>
 
-#include <array>
 #include <vector>
-#include <cstddef>
 
 #include "vector.h"
+#include "world.h"
 
 struct WorldPhysics;
 
@@ -18,14 +17,15 @@ struct PlayerMovementInput {
 // First-person camera and kinematic player movement. All collision
 // resolution and the grounded rule are provided by WorldPhysics.
 struct PlayerController {
-  struct JumpPress {
-    float feet_y = 0.0f;
-    float vertical_velocity = 0.0f;
-    bool grounded = false;
-    bool executed = false;
-  };
-
-  PlayerController(Camera3D camera, Vector3 feet, Vector3 size);
+  // defined as the center (in xz plane) of the bottom (smallest y) of the bounds
+  Vector3 feet{};
+  Vector3 velocity{};
+  bool grounded = false;
+  Camera3D camera{};
+  
+  
+  
+  PlayerController(World &world, Camera3D camera, Vector3 feet, Vector3 size);
 
   void apply_look(Vector2 mouse_delta);
   void update(
@@ -35,34 +35,29 @@ struct PlayerController {
   );
   void reset(Vector3 feet, const WorldPhysics& world);
 
-  Vector3 position() const;
-  Vector3 velocity() const;
-  bool grounded() const;
   BoundingBox bounds() const;
-  const Camera3D& camera() const;
-
+  
   static constexpr float eye_height = 1.62f;
-
-
-  std::array<JumpPress, 3> recent_jump_presses() const;
-  std::size_t jump_press_count() const;
-
-
   std::vector<Vector3Int> blocks_overlapping_with_player() const;
 
 private:
   void sync_camera();
 
-  Vector3 feet_{};
-  Vector3 velocity_{};
-  Vector3 size_{};
-  bool grounded_ = false;
-  Camera3D camera_{};
-  float yaw_ = 0.0f;
-  float pitch_ = 0.0f;
-  float step_accumulator_ = 0.0f;
-  float jump_buffer_ = 0.0f;
+  std::vector<int> ints_between(double min, double max, int max_value) const;
 
-  std::array<JumpPress, 3> recent_jumps_{};
-  std::size_t jump_count_ = 0;
+  Vector3 size{};
+  World &world;
+  float yaw = 0.0f;
+  float pitch = 0.0f;
+  
+  // needed for fixed_update() at 60FPS
+  float step_accumulator = 0.0f;
+  float jump_buffer = 0.0f;
+
+  static constexpr float speed = 4.0f;
+  static constexpr float gravity = -9.81f;
+  static constexpr float jump_height = 2.0f;
+  static constexpr float fixed_dt = 1.0f / 60.0f;
+  static constexpr float jump_buffer_duration = 0.1f;
+
 };

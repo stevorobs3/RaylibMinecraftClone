@@ -7,6 +7,7 @@
 #include <iostream>
 #include <format>
 
+#include "raylib.h"
 #include "vector.h"
 
 
@@ -107,6 +108,14 @@ struct World {
 			position.y >= 0 && position.y < max_y &&
 			position.z >= 0 && position.z < max_xz;
 	}
+
+  // bounds of the world
+  BoundingBox bounds() {
+    return BoundingBox(
+      {0, 0, 0},
+      {width, height, width}
+    );
+  }
 
   BlockType get(int x, int y, int z) const {
     int index = (x / ChunkSection::n) + n * (z / ChunkSection::n) ;

@@ -96,27 +96,28 @@ void WorldPhysics::move_player(
 
     // todo: only look at small area around player
     // we know exactly which blocks are touched based on player position and BB
-    for (auto&& [block_type, x, y, z] : world_.block_types_with_positions()) {
+    for (Vector3Int block_pos : controller_.blocks_overlapping_with_player()) {
+      BlockType block_type = world_.get(block_pos);
       if (block_type == BlockType::Air ||
-          !overlap(player_bounds(feet, size), block_bounds(x, y, z))) {
+          !overlap(player_bounds(feet, size), block_bounds(block_pos.x, block_pos.y, block_pos.z))) {
         continue;
       }
 
       if (axis == 'x') {
         feet.x = delta > 0.0f
-          ? std::min(feet.x, static_cast<float>(x) - size.x * 0.5f)
-          : std::max(feet.x, static_cast<float>(x + 1) + size.x * 0.5f);
+          ? std::min(feet.x, static_cast<float>(block_pos.x) - size.x * 0.5f)
+          : std::max(feet.x, static_cast<float>(block_pos.x + 1) + size.x * 0.5f);
         velocity.x = 0.0f;
       } else if (axis == 'z') {
         feet.z = delta > 0.0f
-          ? std::min(feet.z, static_cast<float>(z) - size.z * 0.5f)
-          : std::max(feet.z, static_cast<float>(z + 1) + size.z * 0.5f);
+          ? std::min(feet.z, static_cast<float>(block_pos.z) - size.z * 0.5f)
+          : std::max(feet.z, static_cast<float>(block_pos.z + 1) + size.z * 0.5f);
         velocity.z = 0.0f;
       } else {
         // Player position is at the feet, not at the body's centre.
         feet.y = delta > 0.0f
-          ? std::min(feet.y, static_cast<float>(y) - size.y)
-          : std::max(feet.y, static_cast<float>(y + 1));
+          ? std::min(feet.y, static_cast<float>(block_pos.y) - size.y)
+          : std::max(feet.y, static_cast<float>(block_pos.y + 1));
         velocity.y = 0.0f;
       }
     }

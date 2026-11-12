@@ -53,6 +53,7 @@ int main() {
   };
 
   PlayerController controller(
+    world,
     camera,
     player_initial_position,
     {0.6f, 1.8f, 0.6f}
@@ -85,7 +86,7 @@ int main() {
     start = now();
     controller.apply_look(input.look_delta);
     timers.apply_look = elapsed_ms(start);
-    player.find_target(world, controller.camera());
+    player.find_target(world, controller.camera);
     timers.find_target = elapsed_ms(start);
     player.manipulate_blocks(world, physics, controller, input);
     timers.manipulate_blocks = elapsed_ms(start);
@@ -98,7 +99,7 @@ int main() {
     std::vector<Vector3Int> blocks_overlapping_player = controller.blocks_overlapping_with_player();
     BeginDrawing();
     ClearBackground(RAYWHITE);
-    BeginMode3D(controller.camera());
+    BeginMode3D(controller.camera);
     renderer.draw_world();
     renderer.draw_player();
     EndMode3D();
