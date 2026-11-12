@@ -9,7 +9,7 @@
 #include "world_physics.h"
 #include "render.h"
 
-Vector3 player_initial_position{World::width / 2,World::height / 8, World::width / 2};
+Vector3 player_initial_position{World::width / 2.0f,World::height / 8.0f, World::width / 2.0f};
 
 
 void reset(

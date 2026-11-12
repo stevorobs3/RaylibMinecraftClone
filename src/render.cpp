@@ -5,23 +5,18 @@
 #include "world.h"
 
 
-bool first_frame = true;
-// todo: use meches instead of raw cubes here!
 void Renderer::draw_world() {
-  DrawGrid(10, 1);
+  // todo: use meshes instead of raw cubes here!
+
   for (auto [block_type, x, y, z] : world.block_types_with_positions()) {
     if (block_type != BlockType::Air) {
       const Color color = block_color.at(block_type);
-      if (first_frame) {
-        // std::cout << std::format("x,y,z = {},{},{}", x,y,z) << std::endl;
-      }
       DrawCube(
         {x + 0.5f, y + 0.5f, z + 0.5f},
         1, 1, 1, color
       );
     }
   }
-  first_frame = false;
 }
 
 void Renderer::draw_player_target() {
@@ -46,7 +41,11 @@ void Renderer::draw_player() {
   }
 }
 
-void Renderer::draw_ui(bool show_physics_debug, DebugTimers debug_timers, std::vector<Vector3Int> blocks_ovelapping_player) {
+void Renderer::draw_ui(
+  bool show_physics_debug,
+  DebugTimers debug_timers,
+  std::vector<Vector3Int> blocks_ovelapping_player
+) {
   DrawCircle(GetScreenWidth() / 2, GetScreenHeight() / 2, 3, BLACK);
   DrawFPS(0, 0);
 
@@ -66,7 +65,7 @@ void Renderer::draw_ui(bool show_physics_debug, DebugTimers debug_timers, std::v
 
   DrawText(
     TextFormat(
-      "timers: \napply_look:%.3f\nfind_target:%.3f\nmanipulate_blocks:%.3f\ncontroller_update:%.3f\nrender:%.3f",
+      "timers: \napply_look:%.1f\nfind_target:%.1f\nmanipulate_blocks:%.1f\ncontroller_update:%.1f\nrender:%.1f",
       debug_timers.apply_look, debug_timers.find_target, debug_timers.manipulate_blocks, debug_timers.controller_update, debug_timers.render
     ),
     8, 55, 18, BLACK

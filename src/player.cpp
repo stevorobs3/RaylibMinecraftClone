@@ -12,19 +12,17 @@ void Player::find_target(const World& world, const Camera3D& camera) {
 
   float nearest = 5.0f;
   target.reset();
-  for (auto&& [block_type, x, y, z] : world.block_types_with_positions()) {
+  for (Vector3Int grid_position : world.positions_within_range(camera.position, nearest)) {
+    BlockType block_type = world.get(grid_position);
     if (block_type == BlockType::Air) {
       continue;
     }
-    const BoundingBox bounds{
-      .min = {static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)},
-      .max = {static_cast<float>(x + 1), static_cast<float>(y + 1), static_cast<float>(z + 1)}
-    };
+    const BoundingBox bounds = Block::bounds(block_type, grid_position);
     const RayCollision hit = GetRayCollisionBox(ray, bounds);
     if (hit.hit && hit.distance < nearest) {
       nearest = hit.distance;
       target = BlockHit{
-        .position = {x, y, z},
+        .position = grid_position,
         .face_normal = {
           static_cast<int>(std::lround(hit.normal.x)),
           static_cast<int>(std::lround(hit.normal.y)),
@@ -57,8 +55,6 @@ void Player::manipulate_blocks(
     if (!world.contains(cell)) {
       return;
     }
-    // std::cout << std::format("hit: {},{},{}",hit.position.x,hit.position.y,hit.position.z) << std::endl;
-    // std::cout << std::format("normal: {},{},{}",hit.face_normal.x,hit.face_normal.y,hit.face_normal.z) << std::endl;
 
     BlockType block_type = world.get(cell.x, cell.y, cell.z);
     if (block_type == BlockType::Air &&

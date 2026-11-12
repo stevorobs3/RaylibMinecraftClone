@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cmath>
 #include <experimental/mdspan>
 #include <array>
+#include <vector>
 #include <ranges>
 #include <tuple>
 #include <iostream>
@@ -12,10 +14,29 @@
 
 
 
-enum class BlockType {
+enum class BlockType: uint8_t {
 		Air,
 		Grass,
 		Dirt
+};
+
+struct Block {
+
+  //todo: handle non full blocks
+  static BoundingBox bounds(BlockType block_type, Vector3Int position) {
+    return BoundingBox{
+      .min = {
+        static_cast<float>(position.x),
+        static_cast<float>(position.y),
+        static_cast<float>(position.z)
+      },
+      .max = {
+        static_cast<float>(position.x + 1),
+        static_cast<float>(position.y + 1),
+        static_cast<float>(position.z + 1)
+      }
+    };
+  }
 };
 
 using Blocks = std::experimental::mdspan<
@@ -100,7 +121,7 @@ struct World {
     }    
 	}
 
-	bool contains(Vector3Int position) {
+	bool contains(Vector3Int position) const {
     int max_xz = n * ChunkSection::n;
     int max_y = Chunk::n_sections * ChunkSection::n;
 
@@ -124,7 +145,6 @@ struct World {
     int section_x = x % ChunkSection::n;
     int section_y = y % ChunkSection::n;
     int section_z = z % ChunkSection::n;
-    // std::cout << std::format("section x,y,z: {},{},{}",section_x,section_y,section_z) << std::endl;
     return chunks[index]
       .chunk_sections[chunk_section_index]
       .const_blocks()[section_x, section_y, section_z]; 
@@ -141,10 +161,36 @@ struct World {
     int section_x = x % ChunkSection::n;
     int section_y = y % ChunkSection::n;
     int section_z = z % ChunkSection::n;
-    // std::cout << std::format("set block, {},{},{} {},{},{} {} {}",x,y,z,section_x,section_y,section_z, index, chunk_section_index) << std::endl;
+    
     chunks[index]
       .chunk_sections[chunk_section_index]
       .blocks()[section_x, section_y, section_z] = block_type; 
+  }
+
+  Vector3Int to_grid_position(Vector3 position) const {
+    // todo: handle negative ranges too
+    return Vector3Int(
+      std::floor(position.x),
+      std::floor(position.y),
+      std::floor(position.z)
+    );
+  }
+
+  std::vector<Vector3Int> positions_within_range(Vector3 origin, int range) const {
+    Vector3Int origin_grid_position = to_grid_position(origin);
+
+    std::vector<Vector3Int> positions{};
+    for (int dx = -range; dx < range; dx++) {
+      for (int dy = -range; dy < range; dy++) {
+        for (int dz = -range; dz < range; dz++) {
+          Vector3Int position = origin_grid_position + Vector3Int(dx, dy, dz);
+          if (contains(position)) {
+            positions.push_back(position);
+          }
+        }
+      }
+    }
+    return positions;
   }
 
   // todo: remove this - its terrible to use now!!!
@@ -154,7 +200,6 @@ struct World {
 						int y = i / (width * width);
 						int z = (i % (width * width)) / width;
 						int x = (i % (width * width)) % width;
-            // std::cout << std::format("x,y,z= {},{},{}",x,y,z) << std::endl;
             return std::tuple<BlockType, int, int, int>(
 								get(x, y, z), x, y, z
 						);
