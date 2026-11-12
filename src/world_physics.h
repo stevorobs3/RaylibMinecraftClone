@@ -1,12 +1,15 @@
 #pragma once
 
 #include <raylib.h>
+#include "player_controller.h"
 #include "world.h"
 
 // Minecraft-specific geometry rules for the current full-cube world.
 // No general-purpose physics engine, rigid bodies, or collider ownership.
 struct WorldPhysics {
-  explicit WorldPhysics(const World& world) : world_(world) {}
+  explicit WorldPhysics(
+    const World& world,
+    const PlayerController &controller) : world_(world), controller_(controller) {}
 
   bool is_grounded(BoundingBox player) const;
   bool overlaps_block(BoundingBox player, Vector3Int cell) const;
@@ -22,4 +25,5 @@ struct WorldPhysics {
 
 private:
   const World& world_;
+  const PlayerController& controller_;
 };

@@ -121,6 +121,10 @@ struct World {
       .const_blocks()[section_x, section_y, section_z]; 
   }
 
+  BlockType get(Vector3Int pos) const {
+    return get(pos.x,pos.y,pos.z);
+  }
+
   void set(int x, int y, int z, BlockType block_type) {
     int index = (x / ChunkSection::n) + n * (z / ChunkSection::n) ;
     

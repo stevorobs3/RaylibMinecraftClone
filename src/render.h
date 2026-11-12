@@ -2,10 +2,17 @@
 
 #include <raylib.h>
 #include <unordered_map>
+#include <vector>
+
 
 #include "world.h"
 #include "player.h"
 #include "player_controller.h"
+
+struct DebugTimers {
+  double apply_look, find_target, manipulate_blocks, controller_update, render;
+};
+  
 
 struct Renderer {
   Renderer(
@@ -16,7 +23,7 @@ struct Renderer {
 
   void draw_world();
   void draw_player();
-  void draw_ui(bool show_physics_debug);
+  void draw_ui(bool show_physics_debug, DebugTimers debug_timers, std::vector<Vector3Int> blocks_overlapping_player);
 
 private:
   const World& world;

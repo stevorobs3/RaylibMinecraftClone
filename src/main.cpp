@@ -1,5 +1,6 @@
 #include <raylib.h>
 #include "raymath.h"
+#include <chrono>
 
 #include "player.h"
 #include "player_controller.h"
@@ -22,6 +23,18 @@ void reset(
   player.target.reset();
 }
 
+auto now() {
+  return std::chrono::steady_clock::now();
+}
+
+double elapsed_ms(auto & start) {
+  double duration =  std::chrono::duration<double, std::milli>(
+        now() - start
+  ).count();
+  start = now();
+  return duration;
+}
+
 int main() {
   SetConfigFlags(FLAG_WINDOW_RESIZABLE);
   InitWindow(1280, 720, "Raylib minecraft clone");
@@ -29,7 +42,6 @@ int main() {
   PollInputEvents();
 
   World world;
-  WorldPhysics physics(world);
   Player player;
 
   
@@ -45,11 +57,18 @@ int main() {
     player_initial_position,
     {0.6f, 1.8f, 0.6f}
   );
+  WorldPhysics physics(world, controller);
+  
 
   reset(world, player, controller, physics);
   Renderer renderer(world, player, controller);
   SetTargetFPS(60);
   bool show_physics_debug = false;
+
+  auto timers = DebugTimers{};
+  auto start = now();
+  
+
 
   while (!WindowShouldClose()) {
     const PlayerInput input = PlayerInput::poll();
@@ -62,21 +81,32 @@ int main() {
     }
 
     // The targeting ray sees the mouse movement of this frame.
+    
+    start = now();
     controller.apply_look(input.look_delta);
+    timers.apply_look = elapsed_ms(start);
     player.find_target(world, controller.camera());
+    timers.find_target = elapsed_ms(start);
     player.manipulate_blocks(world, physics, controller, input);
-
+    timers.manipulate_blocks = elapsed_ms(start);
+    
     // Constant-acceleration movement and AABB collisions at 60 Hz.
     controller.update(input.movement_command(), GetFrameTime(), physics);
+    timers.controller_update = elapsed_ms(start);
 
+
+    std::vector<Vector3Int> blocks_overlapping_player = controller.blocks_overlapping_with_player();
     BeginDrawing();
     ClearBackground(RAYWHITE);
     BeginMode3D(controller.camera());
     renderer.draw_world();
     renderer.draw_player();
     EndMode3D();
-    renderer.draw_ui(show_physics_debug);
+    timers.render = elapsed_ms(start);
+    renderer.draw_ui(show_physics_debug, timers, blocks_overlapping_player);
     EndDrawing();
+
+    
   }
 
   CloseWindow();

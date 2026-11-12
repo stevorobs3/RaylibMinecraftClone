@@ -3,7 +3,10 @@
 #include <raylib.h>
 
 #include <array>
+#include <vector>
 #include <cstddef>
+
+#include "vector.h"
 
 struct WorldPhysics;
 
@@ -43,6 +46,9 @@ struct PlayerController {
 
   std::array<JumpPress, 3> recent_jump_presses() const;
   std::size_t jump_press_count() const;
+
+
+  std::vector<Vector3Int> blocks_overlapping_with_player() const;
 
 private:
   void sync_camera();

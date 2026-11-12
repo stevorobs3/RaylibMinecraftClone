@@ -1,4 +1,5 @@
 #include "world_physics.h"
+#include "player_controller.h"
 
 #include <algorithm>
 #include <cmath>
@@ -42,29 +43,30 @@ bool WorldPhysics::is_grounded(BoundingBox player) const {
 
   //todo: Only check small area around player
   // OR: do proper AABB check
-  for (auto&& [block_type, x, y, z] : world_.block_types_with_positions()) {
+  for (Vector3Int block_pos : controller_.blocks_overlapping_with_player()) {
+    BlockType block_type = world_.get(block_pos);
     if (block_type == BlockType::Air) {
       continue;
     }
 
     // The top of a block buried beneath another full cube isn't a
     // walkable surface. This also avoids false jumps at wall seams.
-    if (y + 1 < World::height &&
-        world_.get(x, y + 1, z) != BlockType::Air) {
+    if (block_pos.y + 1 < World::height &&
+        world_.get(block_pos.x, block_pos.y + 1, block_pos.z) != BlockType::Air) {
       continue;
     }
 
-    const float top = static_cast<float>(y + 1);
+    const float top = static_cast<float>(block_pos.y + 1);
     if (std::abs(player.min.y - top) > height_tolerance) {
       continue;
     }
 
     const bool overlaps_x =
-      player.max.x > static_cast<float>(x) + edge_tolerance &&
-      player.min.x < static_cast<float>(x + 1) - edge_tolerance;
+      player.max.x > static_cast<float>(block_pos.x) + edge_tolerance &&
+      player.min.x < static_cast<float>(block_pos.x + 1) - edge_tolerance;
     const bool overlaps_z =
-      player.max.z > static_cast<float>(z) + edge_tolerance &&
-      player.min.z < static_cast<float>(z + 1) - edge_tolerance;
+      player.max.z > static_cast<float>(block_pos.z) + edge_tolerance &&
+      player.min.z < static_cast<float>(block_pos.z + 1) - edge_tolerance;
 
     if (overlaps_x && overlaps_z) {
       return true;

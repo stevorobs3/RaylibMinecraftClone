@@ -3,6 +3,7 @@
 #include "world_physics.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <numbers>
 
@@ -158,4 +159,36 @@ PlayerController::recent_jump_presses() const {
 
 std::size_t PlayerController::jump_press_count() const {
   return jump_count_;
+}
+
+
+// all ints between min and max (including flooring min)
+std::vector<int> ints_between(double min, double max) {
+  assert(max >= min);
+  int floor_min = static_cast<int>(min);
+  int floor_max = static_cast<int>(max);
+  int count = (floor_max - floor_min) + 1;
+  std::vector<int> ints{};
+  for (int i = floor_min; i <= floor_max; i++) {
+    ints.push_back(i);
+  }
+  return ints;
+}
+
+std::vector<Vector3Int> PlayerController::blocks_overlapping_with_player() const {
+
+  auto bb = bounds();
+  std::vector<int> x_s = ints_between(bb.min.x, bb.max.x);
+  std::vector<int> y_s = ints_between(bb.min.y, bb.max.y);
+  std::vector<int> z_s = ints_between(bb.min.z, bb.max.z);
+  std::vector<Vector3Int> blocks{};
+  for (int x : x_s) {
+    for (int y: y_s) {
+      for (int z: z_s) {
+        blocks.push_back({x,y,z});
+      }
+    }
+  }
+  return blocks;
+
 }

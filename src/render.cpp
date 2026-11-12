@@ -46,7 +46,7 @@ void Renderer::draw_player() {
   }
 }
 
-void Renderer::draw_ui(bool show_physics_debug) {
+void Renderer::draw_ui(bool show_physics_debug, DebugTimers debug_timers, std::vector<Vector3Int> blocks_ovelapping_player) {
   DrawCircle(GetScreenWidth() / 2, GetScreenHeight() / 2, 3, BLACK);
   DrawFPS(0, 0);
 
@@ -64,4 +64,21 @@ void Renderer::draw_ui(bool show_physics_debug) {
     8, 35, 18, BLACK
   );
 
+  DrawText(
+    TextFormat(
+      "timers: \napply_look:%.3f\nfind_target:%.3f\nmanipulate_blocks:%.3f\ncontroller_update:%.3f\nrender:%.3f",
+      debug_timers.apply_look, debug_timers.find_target, debug_timers.manipulate_blocks, debug_timers.controller_update, debug_timers.render
+    ),
+    8, 55, 18, BLACK
+  );
+
+  std::string s = std::format("blocks:{}", blocks_ovelapping_player.size());
+  for (auto block : blocks_ovelapping_player) {
+    s += std::format("\n{},{},{}",block.x,block.y,block.z);
+  }
+
+  DrawText(
+    s.c_str(),
+    250, 35, 18, BLACK
+  );
 }
