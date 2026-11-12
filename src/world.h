@@ -23,7 +23,7 @@ enum class BlockType: uint8_t {
 struct Block {
 
   //todo: handle non full blocks
-  static BoundingBox bounds(BlockType block_type, Vector3Int position) {
+  static BoundingBox bounds(Vector3Int position, BlockType block_type) {
     return BoundingBox{
       .min = {
         static_cast<float>(position.x),
@@ -131,7 +131,7 @@ struct World {
 	}
 
   // bounds of the world
-  BoundingBox bounds() {
+  BoundingBox bounds() const {
     return BoundingBox(
       {0, 0, 0},
       {width, height, width}
@@ -166,6 +166,11 @@ struct World {
       .chunk_sections[chunk_section_index]
       .blocks()[section_x, section_y, section_z] = block_type; 
   }
+
+  void set(Vector3Int pos, BlockType block_type) {
+    set(pos.x,pos.y,pos.z, block_type);
+  }
+
 
   Vector3Int to_grid_position(Vector3 position) const {
     // todo: handle negative ranges too

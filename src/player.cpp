@@ -17,7 +17,7 @@ void Player::find_target(const World& world, const Camera3D& camera) {
     if (block_type == BlockType::Air) {
       continue;
     }
-    const BoundingBox bounds = Block::bounds(block_type, grid_position);
+    const BoundingBox bounds = Block::bounds(grid_position, block_type);
     const RayCollision hit = GetRayCollisionBox(ray, bounds);
     if (hit.hit && hit.distance < nearest) {
       nearest = hit.distance;
@@ -45,7 +45,7 @@ void Player::manipulate_blocks(
 
   const BlockHit hit = *target;
   if (input.wants_remove_block()) {
-    world.set(hit.position.x, hit.position.y, hit.position.z, BlockType::Air);
+    world.set(hit.position, BlockType::Air);
     target.reset();
     return;
   }
@@ -56,10 +56,10 @@ void Player::manipulate_blocks(
       return;
     }
 
-    BlockType block_type = world.get(cell.x, cell.y, cell.z);
+    BlockType block_type = world.get(cell);
     if (block_type == BlockType::Air &&
-        !physics.overlaps_block(controller.bounds(), cell)) {
-      world.set(cell.x, cell.y, cell.z, BlockType::Dirt);
+        !physics.overlaps_block(controller.bounds(), cell, block_type)) {
+      world.set(cell, BlockType::Dirt);
       target.reset();
     }
   }

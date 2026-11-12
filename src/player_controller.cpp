@@ -67,20 +67,21 @@ void PlayerController::update(
   // Horizontal movement is relative to yaw, not pitch.
   const float cy = std::cos(yaw);
   const float sy = std::sin(yaw);
-  Vector3 horizontal{
+  Vector3 horizontal_velocity{
     cy * input.movement.x - sy * input.movement.y,
     0.0f,
     sy * input.movement.x + cy * input.movement.y
   };
   const float length = std::sqrt(
-    horizontal.x * horizontal.x + horizontal.z * horizontal.z
+    horizontal_velocity.x * horizontal_velocity.x + horizontal_velocity.z * horizontal_velocity.z
   );
   if (length > 0.0f) {
-    horizontal.x *= speed / length;
-    horizontal.z *= speed / length;
+    horizontal_velocity.x *= speed / length;
+    horizontal_velocity.z *= speed / length;
   }
 
   step_accumulator += std::clamp(frame_dt, 0.0f, 0.1f);
+  // todo: redo this to avoid tunneling
   while (step_accumulator >= fixed_dt) {
     const bool supported = world.is_grounded(bounds());
     float vertical = velocity.y;
@@ -97,14 +98,14 @@ void PlayerController::update(
     const float dy = vertical * fixed_dt +
                      0.5f * gravity * fixed_dt * fixed_dt;
     velocity = {
-      horizontal.x,
+      horizontal_velocity.x,
       vertical + gravity * fixed_dt,
-      horizontal.z
+      horizontal_velocity.z
     };
 
     world.move_player(
       feet, velocity, size,
-      {horizontal.x * fixed_dt, dy, horizontal.z * fixed_dt}
+      {horizontal_velocity.x * fixed_dt, dy, horizontal_velocity.z * fixed_dt}
     );
 
     jump_buffer = std::max(0.0f, jump_buffer - fixed_dt);
@@ -126,9 +127,6 @@ BoundingBox PlayerController::bounds() const {
   };
 }
 
-
-// todo: this messes up all sorts of things - wrong approach?
-// all ints between min and max (including flooring min)
 std::vector<int> PlayerController::ints_between(double min, double max, int max_value) const {
   assert(max >= min);
   
@@ -151,8 +149,7 @@ std::vector<int> PlayerController::ints_between(double min, double max, int max_
 }
 
 std::vector<Vector3Int> PlayerController::blocks_overlapping_with_player() const {
-  //todo: should we handle the player being outside of the bounds of the world?
-  // todo: movement should not allow the player to go outside of the world
+  
   auto bb = bounds();
   std::vector<int> x_s = ints_between(bb.min.x, bb.max.x, world.width);
   std::vector<int> y_s = ints_between(bb.min.y, bb.max.y, world.height);
@@ -162,10 +159,11 @@ std::vector<Vector3Int> PlayerController::blocks_overlapping_with_player() const
   for (int x : x_s) {
     for (int y: y_s) {
       for (int z: z_s) {
-        blocks.push_back({x,y,z});
+        Vector3Int pos{x,y,z};
+        if (world.contains(pos))
+          blocks.push_back(pos);
       }
     }
   }
   return blocks;
-
 }

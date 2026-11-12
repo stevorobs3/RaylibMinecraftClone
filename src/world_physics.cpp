@@ -4,36 +4,19 @@
 #include <algorithm>
 #include <cmath>
 
-namespace {
-
-BoundingBox player_bounds(Vector3 feet, Vector3 size) {
-  return {
-    .min = {feet.x - size.x * 0.5f, feet.y, feet.z - size.z * 0.5f},
-    .max = {feet.x + size.x * 0.5f, feet.y + size.y, feet.z + size.z * 0.5f}
-  };
-}
-
-BoundingBox block_bounds(int x, int y, int z) {
-  return {
-    .min = {static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)},
-    .max = {
-      static_cast<float>(x + 1),
-      static_cast<float>(y + 1),
-      static_cast<float>(z + 1)
-    }
-  };
-}
-
 bool overlap(BoundingBox a, BoundingBox b) {
   return a.min.x < b.max.x && a.max.x > b.min.x &&
          a.min.y < b.max.y && a.max.y > b.min.y &&
          a.min.z < b.max.z && a.max.z > b.min.z;
 }
 
-} // namespace
 
-bool WorldPhysics::overlaps_block(BoundingBox player, Vector3Int cell) const {
-  return overlap(player, block_bounds(cell.x, cell.y, cell.z));
+bool WorldPhysics::overlaps_block(
+  BoundingBox player,
+  Vector3Int cell,
+  BlockType block_type
+) const {
+  return overlap(player, Block::bounds(cell, block_type));
 }
 
 bool WorldPhysics::is_grounded(BoundingBox player) const {
@@ -41,10 +24,9 @@ bool WorldPhysics::is_grounded(BoundingBox player) const {
   constexpr float height_tolerance = 0.04f;
   constexpr float edge_tolerance = 0.002f;
 
-  //todo: Only check small area around player
-  // OR: do proper AABB check
-  for (Vector3Int block_pos : controller_.blocks_overlapping_with_player()) {
-    BlockType block_type = world_.get(block_pos);
+  //todo: base this off off collisions and how it changes the y position
+  for (Vector3Int block_pos : controller.blocks_overlapping_with_player()) {
+    BlockType block_type = world.get(block_pos);
     if (block_type == BlockType::Air) {
       continue;
     }
@@ -52,7 +34,7 @@ bool WorldPhysics::is_grounded(BoundingBox player) const {
     // The top of a block buried beneath another full cube isn't a
     // walkable surface. This also avoids false jumps at wall seams.
     if (block_pos.y + 1 < World::height &&
-        world_.get(block_pos.x, block_pos.y + 1, block_pos.z) != BlockType::Air) {
+        world.get(block_pos.x, block_pos.y + 1, block_pos.z) != BlockType::Air) {
       continue;
     }
 
@@ -85,6 +67,7 @@ void WorldPhysics::move_player(
   // Restore the original axis-separated AABB collision approach:
   // horizontal motion first, then vertical falling / jumping.
   // Each axis is resolved against the current world before the next.
+  BoundingBox world_bb = world.bounds();
   auto resolve_axis = [&](char axis, float delta) {
     if (delta == 0.0f) {
       return;
@@ -94,12 +77,29 @@ void WorldPhysics::move_player(
                         axis == 'y' ? &feet.y : &feet.z;
     *coordinate += delta;
 
-    // todo: only look at small area around player
-    // we know exactly which blocks are touched based on player position and BB
-    for (Vector3Int block_pos : controller_.blocks_overlapping_with_player()) {
-      BlockType block_type = world_.get(block_pos);
+    if (axis == 'x') {
+      feet.x = delta > 0.0f
+        ? std::min(feet.x, (world_bb.max.x - size.x * 0.5f))
+        : std::max(feet.x, (world_bb.min.x + size.x * 0.5f));
+    }
+    else if (axis == 'y') {
+      feet.y = delta > 0.0f
+        ? std::min(feet.y, (world_bb.max.y - size.y))
+        : std::max(feet.y, world_bb.min.y);
+      // if we've hit the ceiling, stop moving up
+      if (feet.y == world_bb.max.y)
+        velocity.y = 0.0f;
+    }
+    else {
+      feet.z = delta > 0.0f
+        ? std::min(feet.z, (world_bb.max.z - size.z * 0.5f))
+        : std::max(feet.z, (world_bb.min.z + size.z * 0.5f));
+    }
+
+    for (Vector3Int block_pos : controller.blocks_overlapping_with_player()) {
+      BlockType block_type = world.get(block_pos);
       if (block_type == BlockType::Air ||
-          !overlap(player_bounds(feet, size), block_bounds(block_pos.x, block_pos.y, block_pos.z))) {
+          !overlap(controller.bounds(), Block::bounds(block_pos, block_type))) {
         continue;
       }
 

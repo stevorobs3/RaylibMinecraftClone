@@ -56,7 +56,7 @@ private:
 
   static constexpr float speed = 4.0f;
   static constexpr float gravity = -9.81f;
-  static constexpr float jump_height = 2.0f;
+  static constexpr float jump_height = 1.25f;
   static constexpr float fixed_dt = 1.0f / 60.0f;
   static constexpr float jump_buffer_duration = 0.1f;
 
