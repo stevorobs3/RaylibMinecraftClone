@@ -210,6 +210,10 @@ struct World {
 						);
 				});
   }
+
+  ChunkSection test_chunk_section() {
+    return chunks[0].chunk_sections[0];
+  }
   static constexpr int n = 2;
   static constexpr int num_chunks = n * n;
   

@@ -25,6 +25,8 @@ struct Renderer {
   void draw_player();
   void draw_ui(bool show_physics_debug, DebugTimers debug_timers, std::vector<Vector3Int> blocks_overlapping_player);
 
+  Mesh GenerateMesh(ChunkSection chunk_section);
+
 private:
   const World& world;
   const Player& player;

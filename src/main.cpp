@@ -9,7 +9,7 @@
 #include "world_physics.h"
 #include "render.h"
 
-Vector3 player_initial_position{World::width / 2.0f,World::height / 8.0f, World::width / 2.0f};
+Vector3 player_initial_position{World::width / 2.0f, 1.0f, World::width / 2.0f};
 
 
 void reset(
@@ -68,6 +68,18 @@ int main() {
 
   auto timers = DebugTimers{};
   auto start = now();
+
+  // mesh generation testing...
+
+  // todo: pull this into renderer somehow
+  /// todo: use actual textures
+  // todo: so many things
+  Model model;
+  Image checked = GenImageChecked(2, 2, 1, 1, RED, GREEN);
+  Texture2D texture = LoadTextureFromImage(checked);
+  UnloadImage(checked);
+  model = LoadModelFromMesh(renderer.GenerateMesh(world.test_chunk_section()));
+  model.materials[0].maps[MATERIAL_MAP_SPECULAR].texture = texture;
   
 
 
@@ -102,13 +114,21 @@ int main() {
     BeginMode3D(controller.camera);
     renderer.draw_world();
     renderer.draw_player();
+
+    DrawModel(model, Vector3(0,0,0), 1.0f, BROWN);
+    DrawModel(model, Vector3(1,0,0), 1.0f, GREEN);
+
+
     EndMode3D();
     timers.render = elapsed_ms(start);
     renderer.draw_ui(show_physics_debug, timers, blocks_overlapping_player);
     EndDrawing();
-
     
   }
+
+  UnloadTexture(texture);
+  UnloadModel(model);
+
 
   CloseWindow();
   return 0;

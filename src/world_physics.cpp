@@ -77,6 +77,8 @@ void WorldPhysics::move_player(
                         axis == 'y' ? &feet.y : &feet.z;
     *coordinate += delta;
 
+    // todo: moving in negative x on bottom of world teleports the player 
+    // up to the next block's y position? why??? strange indeed
     if (axis == 'x') {
       feet.x = delta > 0.0f
         ? std::min(feet.x, (world_bb.max.x - size.x * 0.5f))
