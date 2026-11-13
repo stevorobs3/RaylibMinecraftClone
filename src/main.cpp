@@ -75,12 +75,17 @@ int main() {
   /// todo: use actual textures
   // todo: so many things
   Model model;
-  Image checked = GenImageChecked(2, 2, 1, 1, RED, GREEN);
+  Image checked = GenImageChecked(2, 2, 1, 1, PINK, YELLOW);
   Texture2D texture = LoadTextureFromImage(checked);
   UnloadImage(checked);
+  // todo: render meshes for all the chunk sections in the world
+  // todo: remove those that are:
+  // 1) outside the camera (frustrum culling)
+  // 2) not within the same air pocket as the camera
   model = LoadModelFromMesh(renderer.GenerateMesh(world.test_chunk_section()));
-  model.materials[0].maps[MATERIAL_MAP_SPECULAR].texture = texture;
-  
+  // todo: use a texture atlas
+  // todo: enable mipmaps, which requires work in the texture atlas to have spacing
+  model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
 
 
   while (!WindowShouldClose()) {
@@ -115,8 +120,8 @@ int main() {
     renderer.draw_world();
     renderer.draw_player();
 
-    DrawModel(model, Vector3(0,0,0), 1.0f, BROWN);
-    DrawModel(model, Vector3(1,0,0), 1.0f, GREEN);
+    DrawModel(model, Vector3(14,2,14), 1.0f, WHITE);
+    DrawModel(model, Vector3(15,2,14), 1.0f, WHITE);
 
 
     EndMode3D();
