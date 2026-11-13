@@ -6,20 +6,22 @@
 
 
 #include "world.h"
+#include "world_mesh.h"
 #include "player.h"
 #include "player_controller.h"
 
 struct DebugTimers {
   double apply_look, find_target, manipulate_blocks, controller_update, render;
 };
-  
+
 
 struct Renderer {
   Renderer(
     const World& world,
+    const WorldMesh& world_mesh,
     const Player& player,
     const PlayerController& controller
-  ) : world(world), player(player), controller(controller) {}
+  ) : world(world), world_mesh(world_mesh), player(player), controller(controller) {}
 
   void draw_world();
   void draw_player();
@@ -31,6 +33,7 @@ private:
   const World& world;
   const Player& player;
   const PlayerController& controller;
+  const WorldMesh& world_mesh;
 
   const std::unordered_map<BlockType, Color> block_color{
     {BlockType::Grass, GREEN},

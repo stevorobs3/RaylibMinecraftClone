@@ -10,6 +10,7 @@
 #include <format>
 
 #include "raylib.h"
+#include "raymath.h"
 #include "vector.h"
 
 
@@ -52,6 +53,8 @@ using ConstBlocks = std::experimental::mdspan<
 
 struct ChunkSection {
 
+  ChunkSection(Vector3 origin) : origin(origin) {}
+
   Blocks blocks() {
     return Blocks(storage.data(), n, n, n);
   }
@@ -64,9 +67,18 @@ struct ChunkSection {
     storage.fill(block_type);
   }
 
+  BoundingBox bounds() const {
+    return BoundingBox{
+      origin,
+      origin + Vector3(ChunkSection::n, ChunkSection::n, ChunkSection::n)
+    };
+  }
+
+  Vector3 origin;
+
   static constexpr int n = 16;
   static constexpr int blockCount = n * n * n;
-  
+
 private:
   // todo: packedArray based on palette
   std::array<BlockType, blockCount> storage{};
@@ -74,6 +86,15 @@ private:
 };
 
 struct Chunk {
+
+  Chunk(Vector3 origin) : origin(origin) {
+    chunk_sections.reserve(n_sections);
+    for (int i = 0; i < n_sections; i++) {
+      chunk_sections.emplace_back(
+        origin + Vector3(0, ChunkSection::n * i, 0)
+      );
+    }
+  }
 
   void fill_section(BlockType block_type, int i) {
     chunk_sections[i].fill(block_type);
@@ -84,16 +105,40 @@ struct Chunk {
     }
   }
 
+  BoundingBox bounds() const {
+    return BoundingBox{
+      origin,
+      origin + Vector3(ChunkSection::n, n_sections*ChunkSection::n, ChunkSection::n)
+    };
+  }
+
   static constexpr int n_sections = 4;
-  std::array<ChunkSection, n_sections> chunk_sections{};
+  std::vector<ChunkSection> chunk_sections;
+
+private:
+  Vector3 origin;
 
 };
 
 
+// todo: this currently holds the responsibility of
+// marking chunk sections as dirty. Not sure if this is the right
+// place for that longer term
 
+// todo: this is getting big - probably worth a world.cpp soon
 struct World {
-  
+
 	World() {
+    chunks.reserve(n * n);
+    for (int z = 0; z < n; z++) {
+      for (int x = 0; x < n; x++) {
+        chunks.emplace_back(Vector3{
+          static_cast<float>(x * ChunkSection::n),
+          0,
+          static_cast<float>(z * ChunkSection::n),
+        });
+      }
+    }
 		initialise();
 	}
 
@@ -108,7 +153,7 @@ struct World {
 	void initialise() {
     for(Chunk &chunk : chunks) {
       chunk.fill(BlockType::Air); // Reset player-edited blocks too.
-    
+
       auto blocks = chunk.chunk_sections[0].blocks();
       for (int x = 0; x < ChunkSection::n; x++) {
         for (int z = 0; z < ChunkSection::n; z++) {
@@ -118,7 +163,8 @@ struct World {
       }
 
       // chunk.fill_section(BlockType::Grass, 1);
-    }    
+    }
+
 	}
 
 	bool contains(Vector3Int position) const {
@@ -140,14 +186,18 @@ struct World {
 
   BlockType get(int x, int y, int z) const {
     int index = (x / ChunkSection::n) + n * (z / ChunkSection::n) ;
-    
+
     int chunk_section_index = y / ChunkSection::n;
     int section_x = x % ChunkSection::n;
     int section_y = y % ChunkSection::n;
     int section_z = z % ChunkSection::n;
     return chunks[index]
       .chunk_sections[chunk_section_index]
-      .const_blocks()[section_x, section_y, section_z]; 
+      .const_blocks()[section_x, section_y, section_z];
+  }
+
+  ChunkSection& get_chunk_section(int chunk_index,int chunk_section_index) {
+    return chunks[chunk_index].chunk_sections[chunk_section_index];
   }
 
   BlockType get(Vector3Int pos) const {
@@ -156,15 +206,18 @@ struct World {
 
   void set(int x, int y, int z, BlockType block_type) {
     int index = (x / ChunkSection::n) + n * (z / ChunkSection::n) ;
-    
+
     int chunk_section_index = y / ChunkSection::n;
     int section_x = x % ChunkSection::n;
     int section_y = y % ChunkSection::n;
     int section_z = z % ChunkSection::n;
-    
+
     chunks[index]
       .chunk_sections[chunk_section_index]
-      .blocks()[section_x, section_y, section_z] = block_type; 
+      .blocks()[section_x, section_y, section_z] = block_type;
+
+    // todo: only mark as dirty if block_type actually changes
+    dirty_chunk_sections.push_back({index, chunk_section_index});
   }
 
   void set(Vector3Int pos, BlockType block_type) {
@@ -211,20 +264,16 @@ struct World {
 				});
   }
 
-  ChunkSection test_chunk_section() {
-    return chunks[0].chunk_sections[0];
-  }
   static constexpr int n = 2;
   static constexpr int num_chunks = n * n;
-  
+
   static constexpr int height = Chunk::n_sections * ChunkSection::n;
   static constexpr int width =  ChunkSection::n * n;
-  static constexpr int block_count = width * width * height; 
-  
-private:
+  static constexpr int block_count = width * width * height;
+
+  std::vector<std::tuple<int, int>> dirty_chunk_sections;
+
   // number of chunks per x / z direction
-  std::array<Chunk, n * n> chunks{};
-
-
+  std::vector<Chunk> chunks;
 
 };

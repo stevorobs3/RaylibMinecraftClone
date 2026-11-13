@@ -1,0 +1,54 @@
+#pragma once
+
+#include <vector>
+
+#include "mesh_generator.h"
+#include "world.h"
+#include "chunk_section_mesh.h"
+
+
+
+struct WorldMesh {
+
+  // todo: this should probably handle dirty management
+  // todo: can the world issue an event / callback when a chunk section changes?
+  // todo: how to manage lookups
+  WorldMesh(World &world) : world(world) {
+    chunk_section_meshes.reserve(world.num_chunks * Chunk::n_sections);
+    for (int i = 0; i < world.num_chunks; i++) {
+      for (int j = 0; j < Chunk::n_sections; j++) {
+        ChunkSection &chunk_section = world.get_chunk_section(i,j);
+        chunk_section_meshes.push_back(ChunkSectionMesh{chunk_section});
+      }
+    }
+  }
+
+  //todo: handle async things
+  void rebuild_dirty_meshes() {
+    // todo: how to map chunkSection_meshes to dirty chunks?
+    for (auto [i,j] : world.dirty_chunk_sections) {
+      int index = i * Chunk::n_sections + j;
+      chunk_section_meshes[index].rebuild_mesh();
+    }
+    world.dirty_chunk_sections.clear();
+  }
+
+  void unload() {
+    for (ChunkSectionMesh &c : chunk_section_meshes) {
+      c.unload();
+    }
+  }
+
+  // todo: remove those that are:
+  // 1) outside the camera (frustrum culling)
+  // 2) not within the same air pocket as the camera
+
+
+  std::vector<ChunkSectionMesh> chunk_section_meshes;
+
+
+private:
+  World &world;
+  MeshGenerator mesh_generator{};
+
+};
