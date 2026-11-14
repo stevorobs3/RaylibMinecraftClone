@@ -10,6 +10,7 @@
 //todo: logic for neighbours or face normals are wrong here!
 
 
+// todo: separate out into .h and .cpp
 // todo: probably just a namespace?
 struct MeshGenerator {
 
@@ -20,11 +21,14 @@ struct MeshGenerator {
 
   // TODO: currently just renders a cube -> next stage iterate over all cubes
   // in the mesh adding the faces that aren't occluded by the neighbours
+  // todo: std::optional<Mesh>
   Mesh from(ChunkSection &chunk_section) {
 
     // step 1:
     // build up a conceptual list of vector<tuple(FaceDirection,Position)>
     auto faces_to_render = faces_from(chunk_section);
+
+    // todo: return early if no mesh
 
     // TraceLog(LOG_INFO, std::format(
     //   "Got mesh:{},{},{} with size:{}",
@@ -56,6 +60,8 @@ struct MeshGenerator {
       auto vertices = Face::vertices(direction);
       auto normal = Face::normal(direction);
       for (int i = 0; i < Face::n_vertices; i ++) {
+        // todo: generate all vertices in local to ChunkSection space and use
+        // the origin of the chunk_section when rendering
         mesh.vertices[vertex_index]          = vertices[i].x + position.x;
         mesh.vertices[vertex_index + 1]      = vertices[i].y + position.y;
         mesh.vertices[vertex_index + 2]      = vertices[i].z + position.z;
@@ -90,15 +96,18 @@ struct MeshGenerator {
 
     }
 
+    //todo: log info about the mesh
     // step 3:
     // upload to gpu
     // Upload mesh data from CPU (RAM) to GPU (VRAM) memory
     // todo: can this be done from a separate thread - probs main only.
+    // todo: separate this step so that the mesh building can happen on a non main thread
     UploadMesh(&mesh, false);
 
     return mesh;
   }
 private:
+  // todo: different texture coords per block_type
   std::array<Vector2, Face::n_vertices> all_tex_coords{
     Vector2{0,1},
     Vector2{1,1},
@@ -107,6 +116,9 @@ private:
   };
 
 
+  // todo: also will need to be aware of block shape (half block, stairs, etc)
+  // todo: quesion: can this be reused for things like chests? or would that need to
+  // be separate?
   std::vector<std::tuple<Face::Direction,Vector3Int>> faces_from(
     ChunkSection chunk_section
   ) {
@@ -114,13 +126,18 @@ private:
 
     auto blocks = chunk_section.blocks();
     // internal blocks can use the efficient lookup of blocks
+    // todo: maybe have an iterator in the chunk_section for:
+    // 1) internal blocks
+    // 2) edge / perimiter / surface blocks (better name needed)
     for (int x = 1; x < ChunkSection::n - 1; x++) {
       for (int y = 1; y < ChunkSection::n - 1; y++) {
         for (int z = 1; z < ChunkSection::n - 1; z++) {
           if (blocks[x,y,z] == BlockType::Air) continue;
           for (Face::Direction dir : Face::directions) {
             auto neighbour = chunk_section.internal_neighbour(dir,{x,y,z});
+            //todo: deeper checks here for different block shapes
             if (neighbour == BlockType::Air) {
+              // todo: remove origin addition
               faces.push_back({dir,Vector3Int{x,y,z} + chunk_section.origin});
             }
           }
@@ -135,6 +152,7 @@ private:
     for (int y : {0, ChunkSection::n - 1}) {
       for (int x = 0; x < ChunkSection::n; x++) {
         for (int z = 0; z < ChunkSection::n; z++) {
+          // todo: remove origin
           auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
           if (chunk_section.blocks()[x,y,z] == BlockType::Air) continue;
           for (Face::Direction dir : Face::directions) {
@@ -142,6 +160,7 @@ private:
             // todo: remove this once world is infinitely generated
             if (!chunk_section.world.contains(neighbour_pos))
               continue;
+            // todo: why is `auto` coloured white - would be nice for it to be Blue / green
             auto neighbour = chunk_section.world.get(neighbour_pos);
             if (neighbour == BlockType::Air) {
               faces.push_back({dir,Vector3Int{x,y,z} + chunk_section.origin});
@@ -194,8 +213,6 @@ private:
         }
       }
     }
-
-
 
     return faces;
   }

@@ -12,7 +12,7 @@ void Renderer::draw_world() {
       DrawModel(
         *chunk_section_mesh.model,
         {0,0,0},
-        // chunk_section_mesh.chunk_section.origin,
+        // todo: chunk_section_mesh.chunk_section.origin,
         1.0f,
         WHITE
       );
@@ -21,6 +21,8 @@ void Renderer::draw_world() {
 
   // draw chunk bounds
 
+  // todo: have option to show / hide chunk boundaries
+  // todo: use a grid thing to visually show the chunk boundaries
   rlDrawRenderBatchActive();
   const auto original_line_width = rlGetLineWidth();
   rlSetLineWidth(5.0f);
@@ -36,18 +38,6 @@ void Renderer::draw_world() {
       DrawBoundingBox(chunk_section.bounds, BLUE);
     }
   }
-
-
-
-  // for (auto [block_type, x, y, z] : world.block_types_with_positions()) {
-  //   if (block_type != BlockType::Air) {
-  //     const Color color = block_color.at(block_type);
-  //     DrawCube(
-  //       {x + 0.5f, y + 0.5f, z + 0.5f},
-  //       1, 1, 1, color
-  //     );
-  //   }
-  // }
 }
 
 void Renderer::draw_player_target() {

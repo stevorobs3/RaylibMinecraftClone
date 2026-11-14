@@ -35,10 +35,6 @@ private:
   const PlayerController& controller;
   const WorldMesh& world_mesh;
 
-  const std::unordered_map<BlockType, Color> block_color{
-    {BlockType::Grass, GREEN},
-    {BlockType::Dirt, BROWN}
-  };
 
   void draw_player_target();
 };

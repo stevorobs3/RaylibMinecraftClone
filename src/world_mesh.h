@@ -14,11 +14,14 @@ struct WorldMesh {
   // todo: can the world issue an event / callback when a chunk section changes?
   // todo: how to manage lookups
   WorldMesh(World &world) : world(world) {
+    //todo: real texture
     Image checked = GenImageChecked(2, 2, 1, 1, PINK, YELLOW);
     texture = LoadTextureFromImage(checked);
     UnloadImage(checked);
 
-
+    // todo: more generally - what happens if something like the push_back fails?
+    // todo: more generally - what error handling am I missing?
+    // todo: more generally - the mesh generation requires run-time allocations, can this be mitigated / minimised / correctly error handled?
     chunk_section_meshes.reserve(world.num_chunks * Chunk::n_sections);
     for (int i = 0; i < world.num_chunks; i++) {
       for (int j = 0; j < Chunk::n_sections; j++) {
@@ -32,6 +35,7 @@ struct WorldMesh {
   void rebuild_dirty_meshes() {
 
     for (auto [i,j] : world.dirty_chunk_sections) {
+      // todo: assert index is valid?
       int index = i * Chunk::n_sections + j;
       // TraceLog(LOG_INFO, std::format("rebuilding mesh:{},{}",i,j).c_str());
       chunk_section_meshes[index].rebuild_mesh();

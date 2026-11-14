@@ -7,8 +7,6 @@
 #include <ranges>
 #include <tuple>
 #include <cassert>
-#include <iostream>
-#include <format>
 
 #include "raylib.h"
 #include "raymath.h"
@@ -55,6 +53,7 @@ using ConstBlocks = std::experimental::mdspan<
 // explicit circular dependency between both ChunkSection, Chunk and world
 struct World;
 
+// todo: possibly pull this into a separate file
 struct ChunkSection {
 
   World& world;
@@ -96,11 +95,11 @@ struct ChunkSection {
   }
 
   // todo: add similar asserts throughout the codebase!
-  BlockType internal_neighbour(Face::Direction dir, Vector3Int local_position) {
+  BlockType internal_neighbour(Face::Direction dir, Vector3Int local_position) const {
     assert(contains(local_position));
     auto neighbour_pos = local_position + Face::normal(dir);
     assert(contains(neighbour_pos));
-    return blocks()[neighbour_pos.x,neighbour_pos.y,neighbour_pos.z];
+    return const_blocks()[neighbour_pos.x,neighbour_pos.y,neighbour_pos.z];
   }
 
 private:
@@ -109,6 +108,7 @@ private:
 
 };
 
+// todo: separate file
 struct Chunk {
 
   World &world;
@@ -137,6 +137,7 @@ struct Chunk {
     }
   }
 
+  //todo: can be assigned on creation
   BoundingBox bounds() const {
     return BoundingBox{
       origin,
@@ -171,6 +172,7 @@ struct World {
         });
       }
     }
+    //todo: external initialisation / loading / unloading from disk
 		initialise();
 	}
 
@@ -211,6 +213,8 @@ struct World {
 
 
   BlockType get(int x, int y, int z) const {
+    // todo: assert that x,y,z is valid
+    // todo: use global and local coords with a mdspan wrapper here
     int index = (x / ChunkSection::n) + n * (z / ChunkSection::n) ;
 
     int chunk_section_index = y / ChunkSection::n;
@@ -223,6 +227,7 @@ struct World {
   }
 
   ChunkSection& get_chunk_section(int chunk_index,int chunk_section_index) {
+    // todo: assert chunk_index and chunk_section_index are valid
     return chunks[chunk_index].chunk_sections[chunk_section_index];
   }
 
@@ -231,6 +236,7 @@ struct World {
   }
 
   void set(int x, int y, int z, BlockType block_type) {
+    //todo: assert x,y,z are valid
     int index = (x / ChunkSection::n) + n * (z / ChunkSection::n) ;
 
     int chunk_section_index = y / ChunkSection::n;
@@ -238,12 +244,14 @@ struct World {
     int section_y = y % ChunkSection::n;
     int section_z = z % ChunkSection::n;
 
+    // todo: assert index, chunk_section_index are valid
+    // todo: use get_chunk_section?
     chunks[index]
       .chunk_sections[chunk_section_index]
       .blocks()[section_x, section_y, section_z] = block_type;
 
     // todo: only mark as dirty if block_type actually changes
-    // todo: if on boundary - need to also set neighbouring chunks dirty
+    // todo: if on boundary - need to also set neighbouring non-empty chunks dirty
     dirty_chunk_sections.push_back({index, chunk_section_index});
   }
 
@@ -251,15 +259,8 @@ struct World {
     set(pos.x,pos.y,pos.z, block_type);
   }
 
-  BlockType neighbour(Face::Direction dir, Vector3Int position) {
-    assert(contains(position));
-    auto neighbour_pos = position + Face::normal(dir);
-    assert(contains(neighbour_pos));
-    return get(neighbour_pos);
-  }
-
-
   Vector3Int to_grid_position(Vector3 position) const {
+    //todo: assert valid position
     // todo: handle negative ranges too
     return Vector3Int(
       std::floor(position.x),
@@ -283,19 +284,6 @@ struct World {
       }
     }
     return positions;
-  }
-
-  // todo: remove this - its terrible to use now!!!
-	auto block_types_with_positions() const {
-		return std::views::iota(0, block_count)
-        | std::views::transform([this](int i) {
-						int y = i / (width * width);
-						int z = (i % (width * width)) / width;
-						int x = (i % (width * width)) % width;
-            return std::tuple<BlockType, int, int, int>(
-								get(x, y, z), x, y, z
-						);
-				});
   }
 
   static constexpr int n = 2;

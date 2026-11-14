@@ -23,6 +23,7 @@ void reset(
   world.initialise();
   controller.reset(player_initial_position, physics);
   player.target.reset();
+  // todo: reset rebuild all non-empty meshes
 }
 
 auto now() {
@@ -110,9 +111,10 @@ int main() {
 
     renderer.draw_world();
     renderer.draw_player();
+    // todo: this doesn't really represent render time
+    timers.render = elapsed_ms(start);
 
     EndMode3D();
-    timers.render = elapsed_ms(start);
     renderer.draw_ui(show_physics_debug, timers, blocks_overlapping_player);
     EndDrawing();
 

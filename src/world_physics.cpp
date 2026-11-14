@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+// todo: what asserts are needed here?
 
 bool overlap(BoundingBox a, BoundingBox b) {
   return a.min.x < b.max.x && a.max.x > b.min.x &&

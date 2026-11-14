@@ -127,9 +127,10 @@ BoundingBox PlayerController::bounds() const {
   };
 }
 
+// todo: this needs a lot of testing
 std::vector<int> PlayerController::ints_between(double min, double max, int max_value) const {
   assert(max >= min);
-  
+
 
   int floor_min = static_cast<int>(min);
   int floor_max = std::min(static_cast<int>(max), max_value);
@@ -144,12 +145,13 @@ std::vector<int> PlayerController::ints_between(double min, double max, int max_
     ints.push_back(floor_min - 1);
   if (floor_max + 1 < max_value)
     ints.push_back(floor_max + 1);
-  
+
   return ints;
 }
 
+// todo: this needs a lot of testing!
 std::vector<Vector3Int> PlayerController::blocks_overlapping_with_player() const {
-  
+
   auto bb = bounds();
   std::vector<int> x_s = ints_between(bb.min.x, bb.max.x, world.width);
   std::vector<int> y_s = ints_between(bb.min.y, bb.max.y, world.height);

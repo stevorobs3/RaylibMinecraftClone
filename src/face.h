@@ -6,6 +6,8 @@
 #include "raylib.h"
 
 
+// todo: is this a good name, maybe Quad? BlockFace?
+// todo: maybe a struct so that certain things can be private
 namespace Face {
 
   enum class Direction {
@@ -87,10 +89,10 @@ namespace Face {
 
   static constexpr Direction opposite(Direction dir){
     switch (dir) {
-      case Direction::EAST: return Direction::WEST;
-      case Direction::WEST: return Direction::EAST;
-      case Direction::UP: return Direction::DOWN;
-      case Direction::DOWN: return Direction::UP;
+      case Direction::EAST:  return Direction::WEST;
+      case Direction::WEST:  return Direction::EAST;
+      case Direction::UP:    return Direction::DOWN;
+      case Direction::DOWN:  return Direction::UP;
       case Direction::NORTH: return Direction::SOUTH;
       case Direction::SOUTH: return Direction::NORTH;
     }

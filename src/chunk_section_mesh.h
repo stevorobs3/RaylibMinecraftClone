@@ -5,7 +5,6 @@
 
 #include "raylib.h"
 
-
 #include "world.h"
 #include "mesh_generator.h"
 
@@ -39,13 +38,23 @@ struct ChunkSectionMesh {
 
     // todo: is it better to unload the mesh or re-use it in place? (a later optimisation worth considering)
     std::optional<Mesh> mesh = mesh_generator.from(chunk_section);
-    if(!mesh) return;
+    if(!mesh) {
+      // its a logical error if the mesh is asked to be rebuilt, and it goes from
+      // empty mesh -> empty mesh?
+      // todo: ensure that when a neighbouring mesh has a block on the perimeter updated
+      // that it only marks meshes dirty if they are non-empty.
+      assert(model != std::nullopt);
+      UnloadModel(*model);
+      model = std::nullopt;
+      return;
+    }
     if (!model) {
       create_model(*mesh);
     }
-    UnloadMesh(model->meshes[0]);
-    model->meshes[0] = *mesh;
-
+    else {
+      UnloadMesh(model->meshes[0]);
+      model->meshes[0] = *mesh;
+    }
     // todo: use a texture atlas
     // todo: enable mipmaps, which requires work in the texture atlas to have spacing
 
