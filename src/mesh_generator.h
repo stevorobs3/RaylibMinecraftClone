@@ -3,6 +3,7 @@
 #include "raylib.h"
 
 #include <array>
+#include <unordered_map>
 
 #include "world.h"
 
@@ -11,10 +12,9 @@ struct Face {
   static constexpr int n_vertices = 4;
   std::array<Vector3, 4> vertices;
   Vector3 normal;
-  std::array<Vector2, 4> tex_coords;
 };
 
-enum class BlockFace {
+enum class FaceDirection {
   POS_X,
   NEG_X,
   POS_Y,
@@ -34,18 +34,6 @@ struct MeshGenerator {
   // in the mesh adding the faces that aren't occluded by the neighbours
   Mesh from(ChunkSection &chunk_section) {
 
-    std::vector<Face> faces{
-      Face{pos_z_face, pos_z_normal, all_tex_coords},
-      Face{neg_z_face, neg_z_normal, all_tex_coords},
-
-      Face{pos_x_face, pos_x_normal, all_tex_coords},
-      Face{neg_x_face, neg_x_normal, all_tex_coords},
-
-      Face{pos_y_face, pos_y_normal, all_tex_coords},
-      Face{neg_y_face, neg_y_normal, all_tex_coords},
-
-    };
-
     int vertex_index = 0;
     int vertex_count = 0;
     int normal_index = 0;
@@ -62,7 +50,7 @@ struct MeshGenerator {
     mesh.normals = (float *)MemAlloc(mesh.vertexCount*3*sizeof(float));     // 3 vertices, 3 coordinates each (x, y, z)
     mesh.indices = (unsigned short *)MemAlloc(faces.size()*6*sizeof(unsigned short)); // 6 indices per face
 
-    for (Face face : faces) {
+    for (auto && [blockFace, face] : faces) {
       for (int i = 0; i < Face::n_vertices; i ++) {
         mesh.vertices[vertex_index] = face.vertices[i].x;
         mesh.vertices[vertex_index + 1] = face.vertices[i].y;
@@ -70,8 +58,8 @@ struct MeshGenerator {
         mesh.normals[normal_index] = face.normal.x;
         mesh.normals[normal_index + 1] = face.normal.y;
         mesh.normals[normal_index + 2] = face.normal.z;
-        mesh.texcoords[tex_coords_index] = face.tex_coords[i].x;
-        mesh.texcoords[tex_coords_index + 1] = face.tex_coords[i].y;
+        mesh.texcoords[tex_coords_index] = all_tex_coords[i].x;
+        mesh.texcoords[tex_coords_index + 1] = all_tex_coords[i].y;
 
 
         vertex_index  += 3;
@@ -157,11 +145,14 @@ private:
     Vector3{0,0,0},
   };
 
-  Vector3 pos_z_normal = Vector3(0,0,1);
-  Vector3 neg_z_normal = Vector3(0,0,-1);
+  std::unordered_map<FaceDirection, Face> faces{
+    {FaceDirection::POS_X, Face{pos_x_face, {1,0,0}}},
+    {FaceDirection::POS_X, Face{neg_x_face, {-1,0,0}}},
 
-  Vector3 pos_x_normal = Vector3(1,0,0);
-  Vector3 neg_x_normal = Vector3(-1,0,0);
-  Vector3 pos_y_normal = Vector3(0,1,0);
-  Vector3 neg_y_normal = Vector3(0,-1,0);
+    {FaceDirection::POS_Y, Face{pos_y_face, {0,1,0}}},
+    {FaceDirection::POS_Y, Face{neg_y_face, {0,-1,0}}},
+
+    {FaceDirection::POS_Z, Face{pos_z_face, {0,0,1}}},
+    {FaceDirection::NEG_Z, Face{neg_z_face, {0,0,-1}}},
+  };
 };

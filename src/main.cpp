@@ -72,8 +72,6 @@ int main() {
   auto timers = DebugTimers{};
   auto start = now();
 
-  // mesh generation testing...
-
 
   while (!WindowShouldClose()) {
     const PlayerInput input = PlayerInput::poll();
@@ -102,6 +100,7 @@ int main() {
 
     std::vector<Vector3Int> blocks_overlapping_player = controller.blocks_overlapping_with_player();
 
+    // todo: off main thread
     world_mesh.rebuild_dirty_meshes();
 
 

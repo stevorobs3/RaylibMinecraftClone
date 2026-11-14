@@ -15,7 +15,7 @@ struct WorldMesh {
   // todo: can the world issue an event / callback when a chunk section changes?
   // todo: how to manage lookups
   WorldMesh(World &world) : world(world) {
-    Image checked = GenImageChecked(64, 64, 1, 1, PINK, YELLOW);
+    Image checked = GenImageChecked(2, 2, 1, 1, PINK, YELLOW);
     texture = LoadTextureFromImage(checked);
     UnloadImage(checked);
 
@@ -31,9 +31,10 @@ struct WorldMesh {
 
   //todo: handle async things
   void rebuild_dirty_meshes() {
-    // todo: how to map chunkSection_meshes to dirty chunks?
+
     for (auto [i,j] : world.dirty_chunk_sections) {
       int index = i * Chunk::n_sections + j;
+      TraceLog(LOG_INFO, std::format("rebuilding mesh:{},{}",i,j).c_str());
       chunk_section_meshes[index].rebuild_mesh();
     }
     world.dirty_chunk_sections.clear();
