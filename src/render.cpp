@@ -8,12 +8,15 @@
 void Renderer::draw_world() {
 
   for (const ChunkSectionMesh& chunk_section_mesh : world_mesh.chunk_section_meshes) {
-    DrawModel(
-      chunk_section_mesh.model,
-      chunk_section_mesh.chunk_section.origin,
-      1.0f,
-      WHITE
-    );
+    if (chunk_section_mesh.model) {
+      DrawModel(
+        *chunk_section_mesh.model,
+        {0,0,0},
+        // chunk_section_mesh.chunk_section.origin,
+        1.0f,
+        WHITE
+      );
+    }
   }
 
   // draw chunk bounds
@@ -30,21 +33,21 @@ void Renderer::draw_world() {
 
   for (const Chunk& chunk : world.chunks) {
     for (const ChunkSection& chunk_section: chunk.chunk_sections) {
-      DrawBoundingBox(chunk_section.bounds(), BLUE);
+      DrawBoundingBox(chunk_section.bounds, BLUE);
     }
   }
 
 
 
-  for (auto [block_type, x, y, z] : world.block_types_with_positions()) {
-    if (block_type != BlockType::Air) {
-      const Color color = block_color.at(block_type);
-      DrawCube(
-        {x + 0.5f, y + 0.5f, z + 0.5f},
-        1, 1, 1, color
-      );
-    }
-  }
+  // for (auto [block_type, x, y, z] : world.block_types_with_positions()) {
+  //   if (block_type != BlockType::Air) {
+  //     const Color color = block_color.at(block_type);
+  //     DrawCube(
+  //       {x + 0.5f, y + 0.5f, z + 0.5f},
+  //       1, 1, 1, color
+  //     );
+  //   }
+  // }
 }
 
 void Renderer::draw_player_target() {

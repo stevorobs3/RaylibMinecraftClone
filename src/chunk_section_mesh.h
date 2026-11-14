@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <optional>
 
 #include "raylib.h"
 
@@ -15,16 +16,20 @@ struct ChunkSectionMesh {
     Texture2D &texture
   ) : chunk_section(chunk_section), texture(texture) {
 
-    Mesh mesh = mesh_generator.from(chunk_section);
+    std::optional<Mesh> mesh = mesh_generator.from(chunk_section);
+    if (!mesh) return;
+
+    create_model(*mesh);
+  }
+
+  void create_model(Mesh &mesh) {
     model = LoadModelFromMesh(mesh);
-    model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
-
-
-    rebuild_mesh();
+    model->materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
   }
 
   void unload() {
-    UnloadModel(model);
+    if (model)
+      UnloadModel(*model);
   }
 
   //todo: this is slow and should be done off the main thread -> and some will need to
@@ -33,17 +38,20 @@ struct ChunkSectionMesh {
   void rebuild_mesh() {
 
     // todo: is it better to unload the mesh or re-use it in place? (a later optimisation worth considering)
-    Mesh mesh = mesh_generator.from(chunk_section);
-
-    UnloadMesh(model.meshes[0]);
-    model.meshes[0] = mesh;
+    std::optional<Mesh> mesh = mesh_generator.from(chunk_section);
+    if(!mesh) return;
+    if (!model) {
+      create_model(*mesh);
+    }
+    UnloadMesh(model->meshes[0]);
+    model->meshes[0] = *mesh;
 
     // todo: use a texture atlas
     // todo: enable mipmaps, which requires work in the texture atlas to have spacing
 
   }
 
-  Model model;
+  std::optional<Model> model;
   ChunkSection &chunk_section;
 
 

@@ -2,7 +2,6 @@
 
 #include <vector>
 
-#include "mesh_generator.h"
 #include "raylib.h"
 #include "world.h"
 #include "chunk_section_mesh.h"
@@ -34,7 +33,7 @@ struct WorldMesh {
 
     for (auto [i,j] : world.dirty_chunk_sections) {
       int index = i * Chunk::n_sections + j;
-      TraceLog(LOG_INFO, std::format("rebuilding mesh:{},{}",i,j).c_str());
+      // TraceLog(LOG_INFO, std::format("rebuilding mesh:{},{}",i,j).c_str());
       chunk_section_meshes[index].rebuild_mesh();
     }
     world.dirty_chunk_sections.clear();
@@ -57,7 +56,6 @@ struct WorldMesh {
 
 private:
   World &world;
-  MeshGenerator mesh_generator{};
   Texture texture;
 
 };

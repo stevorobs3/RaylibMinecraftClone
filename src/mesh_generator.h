@@ -3,28 +3,16 @@
 #include "raylib.h"
 
 #include <array>
-#include <unordered_map>
 
 #include "world.h"
+#include "face.h"
 
-struct Face {
-  // anti-clockwise Right hand wind
-  static constexpr int n_vertices = 4;
-  std::array<Vector3, 4> vertices;
-  Vector3 normal;
-};
-
-enum class FaceDirection {
-  POS_X,
-  NEG_X,
-  POS_Y,
-  NEG_Y,
-  POS_Z,
-  NEG_Z
-};
+//todo: logic for neighbours or face normals are wrong here!
 
 
+// todo: probably just a namespace?
 struct MeshGenerator {
+
 
   // todo: calculate based on block_type and its location in the texture
   // todo: lookup these from the texture atlas
@@ -34,6 +22,20 @@ struct MeshGenerator {
   // in the mesh adding the faces that aren't occluded by the neighbours
   Mesh from(ChunkSection &chunk_section) {
 
+    // step 1:
+    // build up a conceptual list of vector<tuple(FaceDirection,Position)>
+    auto faces_to_render = faces_from(chunk_section);
+
+    // TraceLog(LOG_INFO, std::format(
+    //   "Got mesh:{},{},{} with size:{}",
+    //   chunk_section.origin.x,chunk_section.origin.y,chunk_section.origin.z,
+    //   faces_to_render.size()
+    // ).c_str());
+
+
+    // step 2:
+    // iterate over that list, generating all the mesh vertices
+
     int vertex_index = 0;
     int vertex_count = 0;
     int normal_index = 0;
@@ -42,23 +44,25 @@ struct MeshGenerator {
 
     Mesh mesh{};
 
-    mesh.triangleCount = faces.size() * 2;
-    mesh.vertexCount = faces.size() * 4;
+    mesh.triangleCount = faces_to_render.size() * 2;
+    mesh.vertexCount = faces_to_render.size() * 4;
 
     mesh.vertices = (float *)MemAlloc(mesh.vertexCount*3*sizeof(float));    // 3 vertices, 3 coordinates each (x, y, z)
     mesh.texcoords = (float *)MemAlloc(mesh.vertexCount*2*sizeof(float));   // 3 vertices, 2 coordinates each (x, y)
     mesh.normals = (float *)MemAlloc(mesh.vertexCount*3*sizeof(float));     // 3 vertices, 3 coordinates each (x, y, z)
-    mesh.indices = (unsigned short *)MemAlloc(faces.size()*6*sizeof(unsigned short)); // 6 indices per face
+    mesh.indices = (unsigned short *)MemAlloc(faces_to_render.size()*6*sizeof(unsigned short)); // 6 indices per face
 
-    for (auto && [blockFace, face] : faces) {
+    for (auto && [direction, position] : faces_to_render) {
+      auto vertices = Face::vertices(direction);
+      auto normal = Face::normal(direction);
       for (int i = 0; i < Face::n_vertices; i ++) {
-        mesh.vertices[vertex_index] = face.vertices[i].x;
-        mesh.vertices[vertex_index + 1] = face.vertices[i].y;
-        mesh.vertices[vertex_index + 2] = face.vertices[i].z;
-        mesh.normals[normal_index] = face.normal.x;
-        mesh.normals[normal_index + 1] = face.normal.y;
-        mesh.normals[normal_index + 2] = face.normal.z;
-        mesh.texcoords[tex_coords_index] = all_tex_coords[i].x;
+        mesh.vertices[vertex_index]          = vertices[i].x + position.x;
+        mesh.vertices[vertex_index + 1]      = vertices[i].y + position.y;
+        mesh.vertices[vertex_index + 2]      = vertices[i].z + position.z;
+        mesh.normals[normal_index]           = normal.x;
+        mesh.normals[normal_index + 1]       = normal.y;
+        mesh.normals[normal_index + 2]       = normal.z;
+        mesh.texcoords[tex_coords_index]     = all_tex_coords[i].x;
         mesh.texcoords[tex_coords_index + 1] = all_tex_coords[i].y;
 
 
@@ -86,6 +90,8 @@ struct MeshGenerator {
 
     }
 
+    // step 3:
+    // upload to gpu
     // Upload mesh data from CPU (RAM) to GPU (VRAM) memory
     // todo: can this be done from a separate thread - probs main only.
     UploadMesh(&mesh, false);
@@ -100,59 +106,97 @@ private:
     Vector2{1,0},
   };
 
-  using FaceVertices = std::array<Vector3,Face::n_vertices>;
 
-  // todo: generate these 6 once, and add the world position to each block
-  FaceVertices pos_z_face{
-    Vector3{0,1,1},
-    Vector3{1,1,1},
-    Vector3{0,0,1},
-    Vector3{1,0,1},
-  };
+  std::vector<std::tuple<Face::Direction,Vector3Int>> faces_from(
+    ChunkSection chunk_section
+  ) {
+    std::vector<std::tuple<Face::Direction,Vector3Int>> faces;
 
-  FaceVertices neg_z_face{
-    Vector3{1,1,0},
-    Vector3{0,1,0},
-    Vector3{1,0,0},
-    Vector3{0,0,0},
-  };
+    auto blocks = chunk_section.blocks();
+    // internal blocks can use the efficient lookup of blocks
+    for (int x = 1; x < ChunkSection::n - 1; x++) {
+      for (int y = 1; y < ChunkSection::n - 1; y++) {
+        for (int z = 1; z < ChunkSection::n - 1; z++) {
+          if (blocks[x,y,z] == BlockType::Air) continue;
+          for (Face::Direction dir : Face::directions) {
+            auto neighbour = chunk_section.internal_neighbour(dir,{x,y,z});
+            if (neighbour == BlockType::Air) {
+              faces.push_back({dir,Vector3Int{x,y,z} + chunk_section.origin});
+            }
+          }
+        }
+      }
+    }
 
-  FaceVertices pos_x_face{
-    Vector3{1,1,1},
-    Vector3{1,1,0},
-    Vector3{1,0,1},
-    Vector3{1,0,0},
-  };
+    // external blocks need to use world to check neighbouring chunks
 
-  FaceVertices neg_x_face{
-    Vector3{0,1,0},
-    Vector3{0,1,1},
-    Vector3{0,0,0},
-    Vector3{0,0,1},
-  };
+    //todo: pull this into a reusable thing with std::views::iota for x,y and z
+    // top and bottom faces
+    for (int y : {0, ChunkSection::n - 1}) {
+      for (int x = 0; x < ChunkSection::n; x++) {
+        for (int z = 0; z < ChunkSection::n; z++) {
+          auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
+          if (chunk_section.blocks()[x,y,z] == BlockType::Air) continue;
+          for (Face::Direction dir : Face::directions) {
+            auto neighbour_pos = block_position + Face::normal(dir);
+            // todo: remove this once world is infinitely generated
+            if (!chunk_section.world.contains(neighbour_pos))
+              continue;
+            auto neighbour = chunk_section.world.get(neighbour_pos);
+            if (neighbour == BlockType::Air) {
+              faces.push_back({dir,Vector3Int{x,y,z} + chunk_section.origin});
+            }
+          }
+        }
+      }
+    }
 
-  FaceVertices pos_y_face{
-    Vector3{1,1,0},
-    Vector3{1,1,1},
-    Vector3{0,1,0},
-    Vector3{0,1,1},
-  };
+    // east and west faces
+    for (int x : {0, ChunkSection::n - 1}) {
+      // we've already done y = 0 and y = ChunkSection::n - 1 for top and bottom faces
+      for (int y = 1; y < ChunkSection::n - 1; y++) {
+        for (int z = 0; z < ChunkSection::n; z++) {
+          auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
+          if (chunk_section.blocks()[x,y,z] == BlockType::Air) continue;
+          for (Face::Direction dir : Face::directions) {
+            auto neighbour_pos = block_position + Face::normal(dir);
+            // todo: remove this once world is infinitely generated
+            if (!chunk_section.world.contains(neighbour_pos))
+              continue;
+            auto neighbour = chunk_section.world.get(neighbour_pos);
+            if (neighbour == BlockType::Air) {
+              faces.push_back({dir,Vector3Int{x,y,z} + chunk_section.origin});
+            }
+          }
+        }
+      }
+    }
 
-  FaceVertices neg_y_face{
-    Vector3{1,0,1},
-    Vector3{1,0,0},
-    Vector3{0,0,1},
-    Vector3{0,0,0},
-  };
 
-  std::unordered_map<FaceDirection, Face> faces{
-    {FaceDirection::POS_X, Face{pos_x_face, {1,0,0}}},
-    {FaceDirection::POS_X, Face{neg_x_face, {-1,0,0}}},
+    // north and south faces
+    for (int z : {0, ChunkSection::n - 1}) {
+      // we've already done x = 0 and ChunkSection::n - 1 for east and west faces
+      for (int x = 1; x < ChunkSection::n - 1; x++) {
+        // we've already done y = 0 and y = ChunkSection::n - 1 for top and bottom faces
+        for (int y = 1; y < ChunkSection::n - 1; y++) {
+          auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
+          if (chunk_section.blocks()[x,y,z] == BlockType::Air) continue;
+          for (Face::Direction dir : Face::directions) {
+            auto neighbour_pos = block_position + Face::normal(dir);
+            // todo: remove this once world is infinitely generated
+            if (!chunk_section.world.contains(neighbour_pos))
+              continue;
+            auto neighbour = chunk_section.world.get(neighbour_pos);
+            if (neighbour == BlockType::Air) {
+              faces.push_back({dir,Vector3Int{x,y,z} + chunk_section.origin});
+            }
+          }
+        }
+      }
+    }
 
-    {FaceDirection::POS_Y, Face{pos_y_face, {0,1,0}}},
-    {FaceDirection::POS_Y, Face{neg_y_face, {0,-1,0}}},
 
-    {FaceDirection::POS_Z, Face{pos_z_face, {0,0,1}}},
-    {FaceDirection::NEG_Z, Face{neg_z_face, {0,0,-1}}},
-  };
+
+    return faces;
+  }
 };

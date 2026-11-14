@@ -6,12 +6,14 @@
 #include <vector>
 #include <ranges>
 #include <tuple>
+#include <cassert>
 #include <iostream>
 #include <format>
 
 #include "raylib.h"
 #include "raymath.h"
 #include "vector.h"
+#include "face.h"
 
 
 
@@ -50,10 +52,30 @@ using ConstBlocks = std::experimental::mdspan<
     std::experimental::dextents<std::size_t, 3>
   >;
 
+// explicit circular dependency between both ChunkSection, Chunk and world
+struct World;
 
 struct ChunkSection {
 
-  ChunkSection(Vector3 origin) : origin(origin) {}
+  World& world;
+  Vector3 origin;
+  BoundingBox bounds;
+  static constexpr int n = 16;
+  static constexpr int blockCount = n * n * n;
+
+  explicit ChunkSection(World& world, Vector3 origin)
+    : world(world), origin(origin),
+      bounds{
+        origin,
+        origin + Vector3(n, n, n)
+      } {}
+
+  // todo: explicitly disallow copying and moving
+  // ChunkSection(const ChunkSection &chunk_section) = delete;
+  // ChunkSection(ChunkSection &&chunk_section) = delete;
+  // ChunkSection& operator=(const ChunkSection &chunk_section) = delete;
+  // ChunkSection& operator=(ChunkSection &&chunk_section) = delete;
+
 
   Blocks blocks() {
     return Blocks(storage.data(), n, n, n);
@@ -67,17 +89,19 @@ struct ChunkSection {
     storage.fill(block_type);
   }
 
-  BoundingBox bounds() const {
-    return BoundingBox{
-      origin,
-      origin + Vector3(ChunkSection::n, ChunkSection::n, ChunkSection::n)
-    };
+  bool contains(Vector3Int position) const {
+    return position.x >= 0 && position.x < ChunkSection::n &&
+      position.y >= 0 && position.y < ChunkSection::n &&
+      position.z >= 0 && position.z < ChunkSection::n;
   }
 
-  Vector3 origin;
-
-  static constexpr int n = 16;
-  static constexpr int blockCount = n * n * n;
+  // todo: add similar asserts throughout the codebase!
+  BlockType internal_neighbour(Face::Direction dir, Vector3Int local_position) {
+    assert(contains(local_position));
+    auto neighbour_pos = local_position + Face::normal(dir);
+    assert(contains(neighbour_pos));
+    return blocks()[neighbour_pos.x,neighbour_pos.y,neighbour_pos.z];
+  }
 
 private:
   // todo: packedArray based on palette
@@ -87,14 +111,22 @@ private:
 
 struct Chunk {
 
-  Chunk(Vector3 origin) : origin(origin) {
+  World &world;
+
+  Chunk(World& world, Vector3 origin) : world(world), origin(origin) {
     chunk_sections.reserve(n_sections);
     for (int i = 0; i < n_sections; i++) {
       chunk_sections.emplace_back(
-        origin + Vector3(0, ChunkSection::n * i, 0)
+        world, origin + Vector3(0, ChunkSection::n * i, 0)
       );
     }
   }
+
+  // todo: explicitly disallow copying and moving
+  // Chunk(const Chunk &chunk) = delete;
+  // Chunk(Chunk &&chunk) = delete;
+  // Chunk& operator=(const Chunk &chunk) = delete;
+  // Chunk& operator=(Chunk &&chunk) = delete;
 
   void fill_section(BlockType block_type, int i) {
     chunk_sections[i].fill(block_type);
@@ -132,7 +164,7 @@ struct World {
     chunks.reserve(n * n);
     for (int z = 0; z < n; z++) {
       for (int x = 0; x < n; x++) {
-        chunks.emplace_back(Vector3{
+        chunks.emplace_back(*this, Vector3{
           static_cast<float>(x * ChunkSection::n),
           0,
           static_cast<float>(z * ChunkSection::n),
@@ -149,16 +181,19 @@ struct World {
 	World& operator=(World &&world) = delete;
 
 
-
 	void initialise() {
     for(Chunk &chunk : chunks) {
       chunk.fill(BlockType::Air); // Reset player-edited blocks too.
 
-      auto blocks = chunk.chunk_sections[0].blocks();
-      for (int x = 0; x < ChunkSection::n; x++) {
-        for (int z = 0; z < ChunkSection::n; z++) {
-          auto block_type = (x + z) % 2 == 0 ? BlockType::Grass : BlockType::Dirt;
-          blocks[x,0,z] = block_type;
+      // 1024 faces??? 32*32*1 = 1024
+      // should have 1024 + 32*4 = 1152 (don't render bottom of world)
+      for (int i = 0; i < chunk.n_sections; i++){
+        auto blocks = chunk.chunk_sections[i].blocks();
+        for (int x = 0; x < ChunkSection::n; x++) {
+          for (int z = 0; z < ChunkSection::n; z++) {
+            auto block_type = (x + z) % 2 == 0 ? BlockType::Grass : BlockType::Dirt;
+            blocks[x,0,z] = block_type;
+          }
         }
       }
 
@@ -168,21 +203,12 @@ struct World {
 	}
 
 	bool contains(Vector3Int position) const {
-    int max_xz = n * ChunkSection::n;
-    int max_y = Chunk::n_sections * ChunkSection::n;
-
-		return position.x >= 0 && position.x < max_xz &&
-			position.y >= 0 && position.y < max_y &&
-			position.z >= 0 && position.z < max_xz;
+		return position.x >= 0 && position.x < width &&
+			position.y >= 0 && position.y < height &&
+			position.z >= 0 && position.z < width;
 	}
 
-  // bounds of the world
-  BoundingBox bounds() const {
-    return BoundingBox(
-      {0, 0, 0},
-      {width, height, width}
-    );
-  }
+
 
   BlockType get(int x, int y, int z) const {
     int index = (x / ChunkSection::n) + n * (z / ChunkSection::n) ;
@@ -217,11 +243,19 @@ struct World {
       .blocks()[section_x, section_y, section_z] = block_type;
 
     // todo: only mark as dirty if block_type actually changes
+    // todo: if on boundary - need to also set neighbouring chunks dirty
     dirty_chunk_sections.push_back({index, chunk_section_index});
   }
 
   void set(Vector3Int pos, BlockType block_type) {
     set(pos.x,pos.y,pos.z, block_type);
+  }
+
+  BlockType neighbour(Face::Direction dir, Vector3Int position) {
+    assert(contains(position));
+    auto neighbour_pos = position + Face::normal(dir);
+    assert(contains(neighbour_pos));
+    return get(neighbour_pos);
   }
 
 
@@ -270,6 +304,12 @@ struct World {
   static constexpr int height = Chunk::n_sections * ChunkSection::n;
   static constexpr int width =  ChunkSection::n * n;
   static constexpr int block_count = width * width * height;
+
+  static constexpr BoundingBox bounds{
+    {0, 0, 0},
+    {width, height, width}
+  };
+
 
   std::vector<std::tuple<int, int>> dirty_chunk_sections;
 

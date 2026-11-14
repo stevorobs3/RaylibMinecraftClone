@@ -67,7 +67,7 @@ void WorldPhysics::move_player(
   // Restore the original axis-separated AABB collision approach:
   // horizontal motion first, then vertical falling / jumping.
   // Each axis is resolved against the current world before the next.
-  BoundingBox world_bb = world.bounds();
+  BoundingBox world_bb = world.bounds;
   auto resolve_axis = [&](char axis, float delta) {
     if (delta == 0.0f) {
       return;
@@ -77,7 +77,7 @@ void WorldPhysics::move_player(
                         axis == 'y' ? &feet.y : &feet.z;
     *coordinate += delta;
 
-    // todo: moving in negative x on bottom of world teleports the player 
+    // todo: moving in negative x on bottom of world teleports the player
     // up to the next block's y position? why??? strange indeed
     if (axis == 'x') {
       feet.x = delta > 0.0f
