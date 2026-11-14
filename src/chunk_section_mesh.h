@@ -8,14 +8,12 @@
 #include "world.h"
 #include "mesh_generator.h"
 
-// a mesh for an chunk section
 struct ChunkSectionMesh {
 
-  ChunkSectionMesh(ChunkSection &chunk_section) : chunk_section(chunk_section) {
-    // todo: pass this in
-    Image checked = GenImageChecked(2, 2, 1, 1, PINK, YELLOW);
-    texture = LoadTextureFromImage(checked);
-    UnloadImage(checked);
+  ChunkSectionMesh(
+    ChunkSection &chunk_section,
+    Texture2D &texture
+  ) : chunk_section(chunk_section), texture(texture) {
 
     Mesh mesh = mesh_generator.from(chunk_section);
     model = LoadModelFromMesh(mesh);
@@ -26,7 +24,6 @@ struct ChunkSectionMesh {
   }
 
   void unload() {
-    UnloadTexture(texture);
     UnloadModel(model);
   }
 
@@ -53,6 +50,6 @@ struct ChunkSectionMesh {
 private:
 
   MeshGenerator mesh_generator{};
-  Texture2D texture;
+  Texture2D& texture;
 
 };

@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "mesh_generator.h"
+#include "raylib.h"
 #include "world.h"
 #include "chunk_section_mesh.h"
 
@@ -14,11 +15,16 @@ struct WorldMesh {
   // todo: can the world issue an event / callback when a chunk section changes?
   // todo: how to manage lookups
   WorldMesh(World &world) : world(world) {
+    Image checked = GenImageChecked(64, 64, 1, 1, PINK, YELLOW);
+    texture = LoadTextureFromImage(checked);
+    UnloadImage(checked);
+
+
     chunk_section_meshes.reserve(world.num_chunks * Chunk::n_sections);
     for (int i = 0; i < world.num_chunks; i++) {
       for (int j = 0; j < Chunk::n_sections; j++) {
         ChunkSection &chunk_section = world.get_chunk_section(i,j);
-        chunk_section_meshes.push_back(ChunkSectionMesh{chunk_section});
+        chunk_section_meshes.push_back(ChunkSectionMesh{chunk_section, texture});
       }
     }
   }
@@ -37,6 +43,7 @@ struct WorldMesh {
     for (ChunkSectionMesh &c : chunk_section_meshes) {
       c.unload();
     }
+    UnloadTexture(texture);
   }
 
   // todo: remove those that are:
@@ -50,5 +57,6 @@ struct WorldMesh {
 private:
   World &world;
   MeshGenerator mesh_generator{};
+  Texture texture;
 
 };
