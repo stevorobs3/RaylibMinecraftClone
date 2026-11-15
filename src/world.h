@@ -186,9 +186,8 @@ struct World {
       //todo: fill should say which blocks are marked dirty
       chunk.fill(BlockType::Air); // Reset player-edited blocks too.
 
-      // 1024 faces??? 32*32*1 = 1024
-      // should have 1024 + 32*4 = 1152 (don't render bottom of world)
-      for (int i = 0; i < chunk.n_sections; i++){
+      // leave the top 2 sections as air
+      for (int i = 0; i < chunk.n_sections - 2; i++){
         auto blocks = chunk.chunk_sections[i].blocks();
         for (int x = 0; x < ChunkSection::n; x++) {
           for (int z = 0; z < ChunkSection::n; z++) {

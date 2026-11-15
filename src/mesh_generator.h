@@ -22,20 +22,20 @@ struct MeshGenerator {
   // TODO: currently just renders a cube -> next stage iterate over all cubes
   // in the mesh adding the faces that aren't occluded by the neighbours
   // todo: std::optional<Mesh>
-  Mesh from(ChunkSection &chunk_section) {
+  std::optional<Mesh> from(ChunkSection &chunk_section) {
 
     // step 1:
     // build up a conceptual list of vector<tuple(FaceDirection,Position)>
     auto faces_to_render = faces_from(chunk_section);
+    TraceLog(LOG_INFO, std::format(
+      "faces_to_render:{} for {}",
+      faces_to_render.size(),
+      to_string(chunk_section.origin)).c_str());
 
-    // todo: return early if no mesh
-
-    // TraceLog(LOG_INFO, std::format(
-    //   "Got mesh:{},{},{} with size:{}",
-    //   chunk_section.origin.x,chunk_section.origin.y,chunk_section.origin.z,
-    //   faces_to_render.size()
-    // ).c_str());
-
+    if (faces_to_render.empty()) {
+      TraceLog(LOG_INFO, std::format("No mesh to render for:{}",to_string(chunk_section.origin)).c_str());
+      return std::nullopt;
+    }
 
     // step 2:
     // iterate over that list, generating all the mesh vertices

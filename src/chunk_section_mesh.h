@@ -43,8 +43,11 @@ struct ChunkSectionMesh {
       // empty mesh -> empty mesh?
       // todo: ensure that when a neighbouring mesh has a block on the perimeter updated
       // that it only marks meshes dirty if they are non-empty.
-      assert(model != std::nullopt);
-      UnloadModel(*model);
+      // todo: enable this assert
+      // assert(model != std::nullopt);
+      if (model) {
+        UnloadModel(*model);
+      }
       model = std::nullopt;
       return;
     }
