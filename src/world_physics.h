@@ -12,7 +12,7 @@ struct WorldPhysics {
     const PlayerController &controller) : world(world), controller(controller) {}
 
   bool is_grounded(BoundingBox player) const;
-  bool overlaps_block(BoundingBox player, Vector3Int cell, BlockType block_type) const;
+  bool player_overlaps_block(Vector3Int cell, BlockType block_type) const;
 
   // Resolve the intended displacement one axis at a time, sliding
   // along walls and cancelling velocity on blocked axes.

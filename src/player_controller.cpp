@@ -44,8 +44,8 @@ void PlayerController::apply_look(Vector2 mouse_delta) {
   sync_camera();
 }
 
-void PlayerController::reset(Vector3 feet, const WorldPhysics& world) {
-  feet = feet;
+void PlayerController::reset(Vector3 initial_feet, const WorldPhysics& world) {
+  feet = initial_feet;
   velocity = {};
   step_accumulator = 0.0f;
   jump_buffer = 0.0f;

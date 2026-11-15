@@ -4,7 +4,6 @@
 #include <experimental/mdspan>
 #include <array>
 #include <vector>
-#include <ranges>
 #include <tuple>
 #include <cassert>
 
@@ -12,7 +11,6 @@
 #include "raymath.h"
 #include "vector.h"
 #include "face.h"
-
 
 
 enum class BlockType: uint8_t {
@@ -185,6 +183,7 @@ struct World {
 
 	void initialise() {
     for(Chunk &chunk : chunks) {
+      //todo: fill should say which blocks are marked dirty
       chunk.fill(BlockType::Air); // Reset player-edited blocks too.
 
       // 1024 faces??? 32*32*1 = 1024
@@ -194,6 +193,7 @@ struct World {
         for (int x = 0; x < ChunkSection::n; x++) {
           for (int z = 0; z < ChunkSection::n; z++) {
             auto block_type = (x + z) % 2 == 0 ? BlockType::Grass : BlockType::Dirt;
+            // todo: use set?
             blocks[x,0,z] = block_type;
           }
         }
@@ -201,8 +201,17 @@ struct World {
 
       // chunk.fill_section(BlockType::Grass, 1);
     }
+    mark_all_dirty();
 
 	}
+
+  void mark_all_dirty() {
+    for (int i = 0; i < chunks.size(); i++) {
+      for (int j = 0; j < chunks[i].chunk_sections.size(); j++) {
+        dirty_chunk_sections.push_back({i,j});
+      }
+    }
+  }
 
 	bool contains(Vector3Int position) const {
 		return position.x >= 0 && position.x < width &&

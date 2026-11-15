@@ -1,5 +1,6 @@
 #include "world_physics.h"
 #include "player_controller.h"
+#include "raylib.h"
 
 #include <algorithm>
 #include <cmath>
@@ -11,13 +12,14 @@ bool overlap(BoundingBox a, BoundingBox b) {
          a.min.z < b.max.z && a.max.z > b.min.z;
 }
 
-
-bool WorldPhysics::overlaps_block(
-  BoundingBox player,
+bool WorldPhysics::player_overlaps_block(
   Vector3Int cell,
   BlockType block_type
 ) const {
-  return overlap(player, Block::bounds(cell, block_type));
+  return overlap(
+    controller.bounds(),
+    Block::bounds(cell, block_type)
+  );
 }
 
 bool WorldPhysics::is_grounded(BoundingBox player) const {
@@ -69,6 +71,7 @@ void WorldPhysics::move_player(
   // horizontal motion first, then vertical falling / jumping.
   // Each axis is resolved against the current world before the next.
   BoundingBox world_bb = world.bounds;
+  Vector3 before_feet = feet;
   auto resolve_axis = [&](char axis, float delta) {
     if (delta == 0.0f) {
       return;
@@ -77,27 +80,6 @@ void WorldPhysics::move_player(
     float* coordinate = axis == 'x' ? &feet.x :
                         axis == 'y' ? &feet.y : &feet.z;
     *coordinate += delta;
-
-    // todo: moving in negative x on bottom of world teleports the player
-    // up to the next block's y position? why??? strange indeed
-    if (axis == 'x') {
-      feet.x = delta > 0.0f
-        ? std::min(feet.x, (world_bb.max.x - size.x * 0.5f))
-        : std::max(feet.x, (world_bb.min.x + size.x * 0.5f));
-    }
-    else if (axis == 'y') {
-      feet.y = delta > 0.0f
-        ? std::min(feet.y, (world_bb.max.y - size.y))
-        : std::max(feet.y, world_bb.min.y);
-      // if we've hit the ceiling, stop moving up
-      if (feet.y == world_bb.max.y)
-        velocity.y = 0.0f;
-    }
-    else {
-      feet.z = delta > 0.0f
-        ? std::min(feet.z, (world_bb.max.z - size.z * 0.5f))
-        : std::max(feet.z, (world_bb.min.z + size.z * 0.5f));
-    }
 
     for (Vector3Int block_pos : controller.blocks_overlapping_with_player()) {
       BlockType block_type = world.get(block_pos);
@@ -124,9 +106,42 @@ void WorldPhysics::move_player(
         velocity.y = 0.0f;
       }
     }
+
+    // todo: how to stop the player from falling through the floor?
+    // if (axis == 'x') {
+      // feet.x = delta > 0.0f
+      //   ? std::min(feet.x, (world_bb.max.x - size.x * 0.5f))
+      //   : std::max(feet.x, (world_bb.min.x + size.x * 0.5f));
+    // }
+    // if (axis == 'y') {
+    //   // feet.y = delta > 0.0f
+    //   //   ? feet.y //std::min(feet.y, (world_bb.max.y - size.y))
+    //   //   : std::max(feet.y, world_bb.min.y);
+    //   float new_feet_y = std::max(feet.y, world_bb.min.y);
+    //   if (new_feet_y != feet.y) {
+    //     TraceLog(LOG_INFO, "we hit the floor!");
+    //     velocity.y = 0.0f;
+    //   }
+    //   feet.y = new_feet_y;
+    // }
+    // else {
+      // feet.z = delta > 0.0f
+      //   ? std::min(feet.z, (world_bb.max.z - size.z * 0.5f))
+      //   : std::max(feet.z, (world_bb.min.z + size.z * 0.5f));
+    // }
   };
 
   resolve_axis('x', displacement.x);
   resolve_axis('z', displacement.z);
   resolve_axis('y', displacement.y);
+  // if (std::abs(before_feet.y - feet.y) > 0.0f) {
+  //   TraceLog(LOG_INFO, std::format(
+  //     "\nfeet:{}\ndelta:{}\ndisplacement:{}\nsize:{}\nvelocity:{}",
+  //     to_string(feet),
+  //     to_string(before_feet - feet),
+  //     to_string(displacement),
+  //     to_string(size),
+  //     to_string(velocity)
+  //   ).c_str());
+  // }
 }

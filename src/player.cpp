@@ -58,7 +58,7 @@ void Player::manipulate_blocks(
 
     BlockType block_type = world.get(cell);
     if (block_type == BlockType::Air &&
-        !physics.overlaps_block(controller.bounds(), cell, block_type)) {
+        !physics.player_overlaps_block(cell, block_type)) {
       world.set(cell, BlockType::Dirt);
       target.reset();
     }
