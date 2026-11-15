@@ -21,7 +21,6 @@ struct MeshGenerator {
 
   // TODO: currently just renders a cube -> next stage iterate over all cubes
   // in the mesh adding the faces that aren't occluded by the neighbours
-  // todo: std::optional<Mesh>
   std::optional<Mesh> from(ChunkSection &chunk_section) {
 
     // step 1:
