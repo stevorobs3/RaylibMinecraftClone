@@ -16,6 +16,7 @@ Vector3 player_initial_position{World::width / 2.0f, 1.0f, World::width / 2.0f};
 
 void reset(
   World& world,
+  WorldMesh* world_mesh,
   Player& player,
   PlayerController& controller,
   const WorldPhysics& physics
@@ -23,7 +24,9 @@ void reset(
   world.initialise();
   controller.reset(player_initial_position, physics);
   player.target.reset();
-  // todo: reset rebuild all non-empty meshes
+  if (world_mesh)
+    world_mesh->rebuild_dirty_meshes();
+
 }
 
 auto now() {
@@ -65,7 +68,7 @@ int main() {
   WorldMesh world_mesh(world);
 
 
-  reset(world, player, controller, physics);
+  reset(world, nullptr, player, controller, physics);
   Renderer renderer(world, world_mesh, player, controller);
   SetTargetFPS(60);
   bool show_physics_debug = false;
@@ -81,7 +84,7 @@ int main() {
       show_physics_debug = !show_physics_debug;
     }
     if (input.wants_reset()) {
-      reset(world, player, controller, physics);
+      reset(world, &world_mesh, player, controller, physics);
     }
 
     // The targeting ray sees the mouse movement of this frame.
