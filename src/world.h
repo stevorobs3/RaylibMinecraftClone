@@ -14,9 +14,9 @@
 
 
 enum class BlockType: uint8_t {
-		Air,
 		Grass,
-		Dirt
+		Dirt,
+    Air
 };
 
 struct Block {
@@ -102,7 +102,7 @@ struct ChunkSection {
 
 private:
   // todo: packedArray based on palette
-  std::array<BlockType, blockCount> storage{};
+  std::array<BlockType, blockCount> storage{BlockType::Air};
 
 };
 

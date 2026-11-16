@@ -6,7 +6,7 @@
 
 #include "world.h"
 #include "face.h"
-
+#include "texture_atlas.h"
 //todo: logic for neighbours or face normals are wrong here!
 
 
@@ -14,6 +14,7 @@
 // todo: probably just a namespace?
 struct MeshGenerator {
 
+  MeshGenerator(TextureAtlas& texture_atlas) : texture_atlas(texture_atlas) {}
 
   // todo: calculate based on block_type and its location in the texture
   // todo: lookup these from the texture atlas
@@ -106,22 +107,16 @@ struct MeshGenerator {
     return mesh;
   }
 private:
-  // todo: different texture coords per block_type
-  std::array<Vector2, Face::n_vertices> all_tex_coords{
-    Vector2{0,1},
-    Vector2{1,1},
-    Vector2{0,0},
-    Vector2{1,0},
-  };
+  TextureAtlas& texture_atlas;
 
 
   // todo: also will need to be aware of block shape (half block, stairs, etc)
   // todo: quesion: can this be reused for things like chests? or would that need to
   // be separate?
-  std::vector<std::tuple<Face::Direction,Vector3Int>> faces_from(
+  std::vector<std::tuple<BlockType, Face::Direction, Vector3Int>> faces_from(
     ChunkSection chunk_section
   ) {
-    std::vector<std::tuple<Face::Direction,Vector3Int>> faces;
+    std::vector<std::tuple<BlockType, Face::Direction,Vector3Int>> faces;
 
     auto blocks = chunk_section.blocks();
     // internal blocks can use the efficient lookup of blocks
@@ -137,7 +132,11 @@ private:
             //todo: deeper checks here for different block shapes
             if (neighbour == BlockType::Air) {
               // todo: remove origin addition
-              faces.push_back({dir,Vector3Int{x,y,z} + chunk_section.origin});
+              faces.push_back({
+                blocks[x,y,z],
+                dir,
+                Vector3Int{x,y,z} + chunk_section.origin}
+              );
             }
           }
         }
@@ -162,7 +161,11 @@ private:
             // todo: why is `auto` coloured white - would be nice for it to be Blue / green
             auto neighbour = chunk_section.world.get(neighbour_pos);
             if (neighbour == BlockType::Air) {
-              faces.push_back({dir,Vector3Int{x,y,z} + chunk_section.origin});
+              faces.push_back({
+                chunk_section.world.get(block_position),
+                dir,
+                Vector3Int{x,y,z} + chunk_section.origin}
+              );
             }
           }
         }
@@ -183,7 +186,11 @@ private:
               continue;
             auto neighbour = chunk_section.world.get(neighbour_pos);
             if (neighbour == BlockType::Air) {
-              faces.push_back({dir,Vector3Int{x,y,z} + chunk_section.origin});
+              faces.push_back({
+                chunk_section.world.get(block_position),
+                dir,
+                Vector3Int{x,y,z} + chunk_section.origin}
+              );
             }
           }
         }
@@ -206,7 +213,11 @@ private:
               continue;
             auto neighbour = chunk_section.world.get(neighbour_pos);
             if (neighbour == BlockType::Air) {
-              faces.push_back({dir,Vector3Int{x,y,z} + chunk_section.origin});
+              faces.push_back({
+                chunk_section.world.get(block_position),
+                dir,
+                Vector3Int{x,y,z} + chunk_section.origin}
+              );
             }
           }
         }

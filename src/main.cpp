@@ -6,6 +6,7 @@
 #include "player.h"
 #include "player_controller.h"
 #include "player_input.h"
+#include "texture_atlas.h"
 #include "world.h"
 #include "world_physics.h"
 #include "render.h"
@@ -47,9 +48,14 @@ int main() {
   DisableCursor();
   PollInputEvents();
 
+
+  TextureAtlas texture_atlas;
   World world;
   Player player;
 
+  if (!texture_atlas.load()) {
+    return -1;
+  }
 
   const Camera3D camera{
     .position = player_initial_position + Vector3(0, PlayerController::eye_height, 0),
@@ -65,7 +71,7 @@ int main() {
     {0.6f, 1.8f, 0.6f}
   );
   WorldPhysics physics(world, controller);
-  WorldMesh world_mesh(world);
+  WorldMesh world_mesh(world, texture_atlas);
 
 
   reset(world, nullptr, player, controller, physics);
@@ -124,6 +130,7 @@ int main() {
   }
 
   world_mesh.unload();
+  texture_atlas.unload();
 
   CloseWindow();
   return 0;

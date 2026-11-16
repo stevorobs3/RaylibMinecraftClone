@@ -12,8 +12,10 @@ struct ChunkSectionMesh {
 
   ChunkSectionMesh(
     ChunkSection &chunk_section,
-    Texture2D &texture
-  ) : chunk_section(chunk_section), texture(texture) {
+    TextureAtlas &texture_atlas
+  ): chunk_section(chunk_section),
+     mesh_generator(texture_atlas),
+     texture_atlas(texture_atlas) {
 
     std::optional<Mesh> mesh = mesh_generator.from(chunk_section);
     if (!mesh) return;
@@ -23,7 +25,7 @@ struct ChunkSectionMesh {
 
   void create_model(Mesh &mesh) {
     model = LoadModelFromMesh(mesh);
-    model->materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
+    model->materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture_atlas.texture;
   }
 
   void unload() {
@@ -58,8 +60,6 @@ struct ChunkSectionMesh {
       UnloadMesh(model->meshes[0]);
       model->meshes[0] = *mesh;
     }
-    // todo: use a texture atlas
-    // todo: enable mipmaps, which requires work in the texture atlas to have spacing
 
   }
 
@@ -69,7 +69,7 @@ struct ChunkSectionMesh {
 
 private:
 
-  MeshGenerator mesh_generator{};
-  Texture2D& texture;
+  MeshGenerator mesh_generator;
+  TextureAtlas& texture_atlas;
 
 };

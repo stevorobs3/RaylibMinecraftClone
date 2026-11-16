@@ -46,3 +46,10 @@ target_link_libraries(minecraft_clone PRIVATE
 # Deliberately use raylib 6.2's bundled GLAD declarations. This is an
 # internal raylib header; keep the raylib version pinned above.
 target_include_directories(minecraft_clone PRIVATE "${raylib_SOURCE_DIR}/src")
+
+
+add_custom_command(TARGET minecraft_clone POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+  "${CMAKE_SOURCE_DIR}/assets/faithful/assets/minecraft/textures/block"
+  "$<TARGET_FILE_DIR:minecraft_clone>/assets"
+  COMMENT "Copying game assets")

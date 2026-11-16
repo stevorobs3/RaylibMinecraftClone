@@ -5,7 +5,7 @@
 #include "raylib.h"
 #include "world.h"
 #include "chunk_section_mesh.h"
-
+#include "texture_atlas.h"
 
 
 struct WorldMesh {
@@ -13,11 +13,8 @@ struct WorldMesh {
   // todo: this should probably handle dirty management
   // todo: can the world issue an event / callback when a chunk section changes?
   // todo: how to manage lookups
-  WorldMesh(World &world) : world(world) {
-    //todo: real texture
-    Image checked = GenImageChecked(2, 2, 1, 1, PINK, YELLOW);
-    texture = LoadTextureFromImage(checked);
-    UnloadImage(checked);
+  WorldMesh(World &world, TextureAtlas& texture_atlas)
+    : world(world), texture_atlas(texture_atlas) {
 
     // todo: more generally - what happens if something like the push_back fails?
     // todo: more generally - what error handling am I missing?
@@ -26,7 +23,10 @@ struct WorldMesh {
     for (int i = 0; i < world.num_chunks; i++) {
       for (int j = 0; j < Chunk::n_sections; j++) {
         ChunkSection &chunk_section = world.get_chunk_section(i,j);
-        chunk_section_meshes.push_back(ChunkSectionMesh{chunk_section, texture});
+        chunk_section_meshes.push_back(ChunkSectionMesh{
+          chunk_section,
+          texture_atlas
+        });
       }
     }
   }
@@ -47,7 +47,6 @@ struct WorldMesh {
     for (ChunkSectionMesh &c : chunk_section_meshes) {
       c.unload();
     }
-    UnloadTexture(texture);
   }
 
   // todo: remove those that are:
@@ -60,6 +59,6 @@ struct WorldMesh {
 
 private:
   World &world;
-  Texture texture;
+  TextureAtlas& texture_atlas;
 
 };
