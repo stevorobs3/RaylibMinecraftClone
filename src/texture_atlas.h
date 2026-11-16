@@ -23,7 +23,9 @@ struct TextureAtlas {
   static constexpr std::array file_names{
     "dirt.png",
     "grass_block_top.png",
-    "grass_block_side.png"
+    "grass_block_side.png",
+    "stone.png",
+    "bedrock.png"
   };
 
   // convert into an n * n grid
@@ -36,8 +38,9 @@ struct TextureAtlas {
   static constexpr int textures_lookup[][6]{
     // EAST WEST UP DOWN NORTH SOUTH
     {2,2,1,0,2,2}, // grass
-    {0,0,0,0,0,0}  // dirt
-
+    {0,0,0,0,0,0}, // dirt
+    {3,3,3,3,3,3}, // stone
+    {4,4,4,4,4,4}, // bedrock
   };
 
   std::array<Vector2, 4> lookup_texture_uv(

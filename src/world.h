@@ -14,9 +14,11 @@
 
 
 enum class BlockType: uint8_t {
-		Grass,
-		Dirt,
-    Air
+  GRASS,
+  DIRT,
+  STONE,
+  BEDROCK,
+  Air
 };
 
 struct Block {
@@ -36,6 +38,17 @@ struct Block {
       }
     };
   }
+
+  static constexpr Color color(BlockType block_type, Face::Direction direction) {
+    if (direction == Face::Direction::UP && block_type == BlockType::GRASS) {
+      // todo: not right colour, look this up in grass block
+      return Color(145, 189, 89,255);
+    }
+    else {
+      return WHITE;
+    }
+  }
+
 };
 
 using Blocks = std::experimental::mdspan<
@@ -186,15 +199,18 @@ struct World {
       //todo: fill should say which blocks are marked dirty
       chunk.fill(BlockType::Air); // Reset player-edited blocks too.
 
-      // leave the top 2 sections as air
-      for (int i = 0; i < chunk.n_sections - 2; i++){
-        auto blocks = chunk.chunk_sections[i].blocks();
-        for (int x = 0; x < ChunkSection::n; x++) {
-          for (int z = 0; z < ChunkSection::n; z++) {
-            auto block_type = (x + z) % 2 == 0 ? BlockType::Grass : BlockType::Dirt;
-            // todo: use set?
-            blocks[x,0,z] = block_type;
-          }
+      auto blocks = chunk.chunk_sections[0].blocks();
+      for (int x = 0; x < ChunkSection::n; x++) {
+        for (int z = 0; z < ChunkSection::n; z++) {
+          blocks[x,0,z] = BlockType::BEDROCK;
+          blocks[x,1,z] = BlockType::STONE;
+          blocks[x,2,z] = BlockType::STONE;
+
+          blocks[x,3,z] = BlockType::DIRT;
+          blocks[x,4,z] = BlockType::DIRT;
+          blocks[x,5,z] = BlockType::DIRT;
+
+          blocks[x,6,z] = BlockType::GRASS;
         }
       }
 

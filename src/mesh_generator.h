@@ -60,7 +60,8 @@ struct MeshGenerator {
 
     for (auto && [block_type, direction, position] : faces_to_render) {
       auto vertices = Face::vertices(direction);
-      auto normal = Face::normal(direction);
+      auto normal   = Face::normal(direction);
+      auto color    = Block::color(block_type, direction);
       auto all_tex_coords = texture_atlas.lookup_texture_uv(
         block_type,
         direction
@@ -71,29 +72,19 @@ struct MeshGenerator {
         mesh.vertices[vertex_index]          = vertices[i].x + position.x;
         mesh.vertices[vertex_index + 1]      = vertices[i].y + position.y;
         mesh.vertices[vertex_index + 2]      = vertices[i].z + position.z;
+
         mesh.normals[normal_index]           = normal.x;
         mesh.normals[normal_index + 1]       = normal.y;
         mesh.normals[normal_index + 2]       = normal.z;
+
         mesh.texcoords[tex_coords_index]     = all_tex_coords[i].x;
         mesh.texcoords[tex_coords_index + 1] = all_tex_coords[i].y;
 
+        mesh.colors[colours_index    ]       = color.r;
+        mesh.colors[colours_index + 1]       = color.g;
+        mesh.colors[colours_index + 2]       = color.b;
+        mesh.colors[colours_index + 3]       = color.a;
 
-        // One face, 4 vertices
-        // temp - make it all green yall
-        // todo: move this elsewhere
-        if (direction == Face::Direction::UP && block_type == BlockType::Grass) {
-          // todo: not right colour, look this up in grass block
-          mesh.colors[colours_index    ] = 100; // R
-          mesh.colors[colours_index + 1] = 160; // G
-          mesh.colors[colours_index + 2] = 57;  // B
-          mesh.colors[colours_index + 3] = 255; // A
-        }
-        else {
-          mesh.colors[colours_index    ] = WHITE.r; // R
-          mesh.colors[colours_index + 1] = WHITE.g; // G
-          mesh.colors[colours_index + 2] = WHITE.b;  // B
-          mesh.colors[colours_index + 3] = WHITE.a; // A
-        }
         normal_index     += 3;
         vertex_index     += 3;
         tex_coords_index += 2;

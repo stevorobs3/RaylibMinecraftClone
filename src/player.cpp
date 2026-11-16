@@ -44,7 +44,7 @@ void Player::manipulate_blocks(
   }
 
   const BlockHit hit = *target;
-  if (input.wants_remove_block()) {
+  if (input.wants_remove_block() && world.get(hit.position) != BlockType::BEDROCK) {
     world.set(hit.position, BlockType::Air);
     target.reset();
     return;
@@ -59,7 +59,7 @@ void Player::manipulate_blocks(
     BlockType block_type = world.get(cell);
     if (block_type == BlockType::Air &&
         !physics.player_overlaps_block(cell, block_type)) {
-      world.set(cell, BlockType::Dirt);
+      world.set(cell, BlockType::DIRT);
       target.reset();
     }
   }
