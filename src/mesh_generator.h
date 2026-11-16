@@ -45,6 +45,7 @@ struct MeshGenerator {
     int normal_index = 0;
     int tex_coords_index = 0;
     int indices_index = 0;
+    int colours_index = 0;
 
     Mesh mesh{};
 
@@ -55,10 +56,15 @@ struct MeshGenerator {
     mesh.texcoords = (float *)MemAlloc(mesh.vertexCount*2*sizeof(float));   // 3 vertices, 2 coordinates each (x, y)
     mesh.normals = (float *)MemAlloc(mesh.vertexCount*3*sizeof(float));     // 3 vertices, 3 coordinates each (x, y, z)
     mesh.indices = (unsigned short *)MemAlloc(faces_to_render.size()*6*sizeof(unsigned short)); // 6 indices per face
+    mesh.colors = (unsigned char *)MemAlloc(mesh.vertexCount * 4* sizeof(char));
 
-    for (auto && [direction, position] : faces_to_render) {
+    for (auto && [block_type, direction, position] : faces_to_render) {
       auto vertices = Face::vertices(direction);
       auto normal = Face::normal(direction);
+      auto all_tex_coords = texture_atlas.lookup_texture_uv(
+        block_type,
+        direction
+      );
       for (int i = 0; i < Face::n_vertices; i ++) {
         // todo: generate all vertices in local to ChunkSection space and use
         // the origin of the chunk_section when rendering
@@ -72,11 +78,28 @@ struct MeshGenerator {
         mesh.texcoords[tex_coords_index + 1] = all_tex_coords[i].y;
 
 
-        vertex_index  += 3;
-        normal_index  += 3;
+        // One face, 4 vertices
+        // temp - make it all green yall
+        // todo: move this elsewhere
+        if (direction == Face::Direction::UP && block_type == BlockType::Grass) {
+          // todo: not right colour, look this up in grass block
+          mesh.colors[colours_index    ] = 100; // R
+          mesh.colors[colours_index + 1] = 160; // G
+          mesh.colors[colours_index + 2] = 57;  // B
+          mesh.colors[colours_index + 3] = 255; // A
+        }
+        else {
+          mesh.colors[colours_index    ] = WHITE.r; // R
+          mesh.colors[colours_index + 1] = WHITE.g; // G
+          mesh.colors[colours_index + 2] = WHITE.b;  // B
+          mesh.colors[colours_index + 3] = WHITE.a; // A
+        }
+        normal_index     += 3;
+        vertex_index     += 3;
         tex_coords_index += 2;
+        colours_index    += 4;
       }
-       /* we want all faces to be regular like this:
+     /* we want all faces to be regular like this:
       0  1
       2  3
       triangle indexes are then:
