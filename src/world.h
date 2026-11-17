@@ -229,12 +229,10 @@ struct World {
 			position.z >= 0 && position.z < width;
 	}
 
-
-
   BlockType get(int x, int y, int z) const {
-    // todo: assert that x,y,z is valid
+    assert(contains({x,y,z}));
     // todo: use global and local coords with a mdspan wrapper here
-    int index = (x / ChunkSection::n) + n * (z / ChunkSection::n) ;
+    int index = (x / ChunkSection::n) + n * (z / ChunkSection::n);
 
     int chunk_section_index = y / ChunkSection::n;
     int section_x = x % ChunkSection::n;
@@ -255,22 +253,20 @@ struct World {
   }
 
   void set(int x, int y, int z, BlockType block_type) {
-    //todo: assert x,y,z are valid
+    assert(contains({x,y,z}));
+    // avoid unneccessary work
+    assert(get(x,y,z) != block_type);
     int index = (x / ChunkSection::n) + n * (z / ChunkSection::n);
-
+    assert(index >= 0 && index < chunks.size());
     int chunk_section_index = y / ChunkSection::n;
+    assert(chunk_section_index >= 0 && index < Chunk::n_sections);
     int section_x = x % ChunkSection::n;
     int section_y = y % ChunkSection::n;
     int section_z = z % ChunkSection::n;
-
-    // todo: assert index, chunk_section_index are valid
-    // todo: use get_chunk_section?
     chunks[index]
       .chunk_sections[chunk_section_index]
       .blocks()[section_x, section_y, section_z] = block_type;
 
-    // todo: only mark as dirty if block_type actually changes
-    // todo: if on boundary - need to also set neighbouring non-empty chunks dirty
     dirty_chunk_sections.push_back({index, chunk_section_index});
 
     // todo: pull into separate place - its handy
@@ -314,17 +310,17 @@ struct World {
     set(pos.x,pos.y,pos.z, block_type);
   }
 
-  Vector3Int to_grid_position(Vector3 position) const {
-    //todo: assert valid position
+  Vector3Int to_grid_position(Vector3 vec3) const {
     // todo: handle negative ranges too
     return Vector3Int(
-      std::floor(position.x),
-      std::floor(position.y),
-      std::floor(position.z)
+      std::floor(vec3.x),
+      std::floor(vec3.y),
+      std::floor(vec3.z)
     );
   }
 
   std::vector<Vector3Int> positions_within_range(Vector3 origin, int range) const {
+
     Vector3Int origin_grid_position = to_grid_position(origin);
 
     std::vector<Vector3Int> positions{};
