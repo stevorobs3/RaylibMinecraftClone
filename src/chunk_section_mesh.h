@@ -40,13 +40,7 @@ struct ChunkSectionMesh {
   void rebuild_mesh() {
 
     // todo: is it better to unload the mesh or re-use it in place? (a later optimisation worth considering)
-    auto start = Timer::now();
     std::optional<Mesh> mesh = mesh_generator.from(chunk_section);
-    TraceLog(LOG_INFO, std::format(
-      "Generate and upload mesh in: {}",
-      Timer::elapsed_ms(start)
-      ).c_str()
-    );
 
     if(!mesh) {
       assert(model != std::nullopt);
@@ -58,18 +52,14 @@ struct ChunkSectionMesh {
     }
     if (!model) {
       create_model(*mesh);
-      TraceLog(LOG_INFO, std::format(
-        "Create new model in: {}",
-        Timer::elapsed_ms(start)
-      ).c_str()
-    );
+
     }
     else {
       auto unload_start = Timer::now();
       UnloadMesh(model->meshes[0]);
       const double unload_ms = Timer::elapsed_ms(unload_start);
       model->meshes[0] = *mesh;
-      TraceLog(LOG_INFO, "Mesh GPU/CPU unload: %.3f ms", unload_ms);
+      MeshProfiling::mesh_unload.add(unload_ms);
     }
 
 
