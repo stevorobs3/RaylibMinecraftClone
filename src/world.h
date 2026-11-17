@@ -261,7 +261,7 @@ struct World {
 
   void set(int x, int y, int z, BlockType block_type) {
     //todo: assert x,y,z are valid
-    int index = (x / ChunkSection::n) + n * (z / ChunkSection::n) ;
+    int index = (x / ChunkSection::n) + n * (z / ChunkSection::n);
 
     int chunk_section_index = y / ChunkSection::n;
     int section_x = x % ChunkSection::n;
@@ -277,6 +277,42 @@ struct World {
     // todo: only mark as dirty if block_type actually changes
     // todo: if on boundary - need to also set neighbouring non-empty chunks dirty
     dirty_chunk_sections.push_back({index, chunk_section_index});
+
+    // todo: pull into separate place - its handy
+    // todo: this is messy as
+    int chunk_x = (x / ChunkSection::n);
+    int chunk_z = (z / ChunkSection::n);
+    if (section_x == 0) {
+      int neighbour_index = (chunk_x - 1) + n * chunk_z;
+      if (neighbour_index >= 0)
+        dirty_chunk_sections.push_back({neighbour_index, chunk_section_index});
+    }
+    if (section_x == ChunkSection::n - 1) {
+      int neighbour_index = (chunk_x + 1) + n * chunk_z;
+      if (neighbour_index < chunks.size())
+        dirty_chunk_sections.push_back({neighbour_index, chunk_section_index});
+    }
+    if (section_z == 0) {
+      int neighbour_index = chunk_x + n * (chunk_z - 1);
+      if (neighbour_index >= 0)
+        dirty_chunk_sections.push_back({neighbour_index, chunk_section_index});
+    }
+    if (section_z == ChunkSection::n - 1) {
+      int neighbour_index = chunk_x + n * (chunk_z + 1);
+      if (neighbour_index < chunks.size())
+        dirty_chunk_sections.push_back({neighbour_index, chunk_section_index});
+    }
+    if (section_y == 0) {
+      int neighbour_index = chunk_section_index - 1;
+      if (neighbour_index >= 0)
+        dirty_chunk_sections.push_back({index, neighbour_index});
+    }
+    if (section_y == ChunkSection::n - 1) {
+      int neighbour_index = chunk_section_index + 1;
+      if (neighbour_index < Chunk::n_sections)
+        dirty_chunk_sections.push_back({index, neighbour_index});
+    }
+
   }
 
   void set(Vector3Int pos, BlockType block_type) {
