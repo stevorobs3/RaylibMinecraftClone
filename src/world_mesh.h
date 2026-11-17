@@ -2,7 +2,6 @@
 
 #include <vector>
 
-#include "raylib.h"
 #include "world.h"
 #include "chunk_section_mesh.h"
 #include "texture_atlas.h"
@@ -12,7 +11,6 @@ struct WorldMesh {
 
   // todo: this should probably handle dirty management
   // todo: can the world issue an event / callback when a chunk section changes?
-  // todo: how to manage lookups
   WorldMesh(World &world, TextureAtlas& texture_atlas)
     : world(world), texture_atlas(texture_atlas) {
 
@@ -35,9 +33,8 @@ struct WorldMesh {
   void rebuild_dirty_meshes() {
 
     for (auto [i,j] : world.dirty_chunk_sections) {
-      // todo: assert index is valid?
       int index = i * Chunk::n_sections + j;
-      // TraceLog(LOG_INFO, std::format("rebuilding mesh:{},{}",i,j).c_str());
+      assert(index >= 0 && index < chunk_section_meshes.size());
       chunk_section_meshes[index].rebuild_mesh();
     }
     world.dirty_chunk_sections.clear();

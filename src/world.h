@@ -244,7 +244,8 @@ struct World {
   }
 
   ChunkSection& get_chunk_section(int chunk_index,int chunk_section_index) {
-    // todo: assert chunk_index and chunk_section_index are valid
+    assert(chunk_index >= 0 && chunk_index < chunks.size());
+    assert(chunk_section_index >= 0 && chunk_section_index < Chunk::n_sections);
     return chunks[chunk_index].chunk_sections[chunk_section_index];
   }
 
