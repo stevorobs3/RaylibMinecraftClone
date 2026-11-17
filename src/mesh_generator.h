@@ -7,7 +7,6 @@
 #include "world.h"
 #include "face.h"
 #include "texture_atlas.h"
-//todo: logic for neighbours or face normals are wrong here!
 
 
 // todo: separate out into .h and .cpp
@@ -16,16 +15,11 @@ struct MeshGenerator {
 
   MeshGenerator(TextureAtlas& texture_atlas) : texture_atlas(texture_atlas) {}
 
-  // todo: calculate based on block_type and its location in the texture
-  // todo: lookup these from the texture atlas
-
-
-  // TODO: currently just renders a cube -> next stage iterate over all cubes
-  // in the mesh adding the faces that aren't occluded by the neighbours
   std::optional<Mesh> from(ChunkSection &chunk_section) {
 
     // step 1:
-    // build up a conceptual list of vector<tuple(FaceDirection,Position)>
+    // todo: quads!
+    // build up a conceptual list of faces to render
     auto faces_to_render = faces_from(chunk_section);
     TraceLog(LOG_INFO, std::format(
       "faces_to_render:{} for {}",
@@ -67,8 +61,6 @@ struct MeshGenerator {
         direction
       );
       for (int i = 0; i < Face::n_vertices; i ++) {
-        // todo: generate all vertices in local to ChunkSection space and use
-        // the origin of the chunk_section when rendering
         mesh.vertices[vertex_index]          = vertices[i].x + position.x;
         mesh.vertices[vertex_index + 1]      = vertices[i].y + position.y;
         mesh.vertices[vertex_index + 2]      = vertices[i].z + position.z;
@@ -97,7 +89,7 @@ struct MeshGenerator {
       021 and  312
      */
       // triangle 021
-      mesh.indices[indices_index] = vertex_count;
+      mesh.indices[indices_index]     = vertex_count;
       mesh.indices[indices_index + 1] = vertex_count + 2;
       mesh.indices[indices_index + 2] = vertex_count + 1;
 
@@ -106,8 +98,7 @@ struct MeshGenerator {
       mesh.indices[indices_index + 4] = vertex_count + 1;
       mesh.indices[indices_index + 5] = vertex_count + 2;
       indices_index += 6;
-      vertex_count += Face::n_vertices;
-
+      vertex_count  += 4;
     }
 
     //todo: log info about the mesh
@@ -127,6 +118,7 @@ private:
   // todo: also will need to be aware of block shape (half block, stairs, etc)
   // todo: quesion: can this be reused for things like chests? or would that need to
   // be separate?
+  // todo: just return a std::vector<Quad> where a quad has all the info required for rendering
   std::vector<std::tuple<BlockType, Face::Direction, Vector3Int>> faces_from(
     ChunkSection chunk_section
   ) {
@@ -145,12 +137,7 @@ private:
             auto neighbour = chunk_section.internal_neighbour(dir,{x,y,z});
             //todo: deeper checks here for different block shapes
             if (neighbour == BlockType::Air) {
-              // todo: remove origin addition
-              faces.push_back({
-                blocks[x,y,z],
-                dir,
-                Vector3Int{x,y,z} + chunk_section.origin}
-              );
+              faces.push_back({blocks[x,y,z], dir, {x,y,z}});
             }
           }
         }
@@ -164,7 +151,6 @@ private:
     for (int y : {0, ChunkSection::n - 1}) {
       for (int x = 0; x < ChunkSection::n; x++) {
         for (int z = 0; z < ChunkSection::n; z++) {
-          // todo: remove origin
           auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
           if (chunk_section.blocks()[x,y,z] == BlockType::Air) continue;
           for (Face::Direction dir : Face::directions) {
@@ -172,14 +158,13 @@ private:
             // todo: remove this once world is infinitely generated
             if (!chunk_section.world.contains(neighbour_pos))
               continue;
-            // todo: why is `auto` coloured white - would be nice for it to be Blue / green
-            auto neighbour = chunk_section.world.get(neighbour_pos);
+            BlockType neighbour = chunk_section.world.get(neighbour_pos);
             if (neighbour == BlockType::Air) {
               faces.push_back({
                 chunk_section.world.get(block_position),
                 dir,
-                Vector3Int{x,y,z} + chunk_section.origin}
-              );
+                {x,y,z}
+              });
             }
           }
         }
@@ -203,8 +188,8 @@ private:
               faces.push_back({
                 chunk_section.world.get(block_position),
                 dir,
-                Vector3Int{x,y,z} + chunk_section.origin}
-              );
+                {x,y,z}
+              });
             }
           }
         }
@@ -230,7 +215,7 @@ private:
               faces.push_back({
                 chunk_section.world.get(block_position),
                 dir,
-                Vector3Int{x,y,z} + chunk_section.origin}
+                {x,y,z}}
               );
             }
           }

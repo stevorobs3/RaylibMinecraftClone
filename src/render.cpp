@@ -11,8 +11,7 @@ void Renderer::draw_world() {
     if (chunk_section_mesh.model) {
       DrawModel(
         *chunk_section_mesh.model,
-        {0,0,0},
-        // todo: chunk_section_mesh.chunk_section.origin,
+        chunk_section_mesh.chunk_section.origin,
         1.0f,
         WHITE
       );
