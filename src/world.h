@@ -274,7 +274,7 @@ struct World {
     int index = (x / ChunkSection::n) + n * (z / ChunkSection::n);
     assert(index >= 0 && index < chunks.size());
     int chunk_section_index = y / ChunkSection::n;
-    assert(chunk_section_index >= 0 && index < Chunk::n_sections);
+    assert(chunk_section_index >= 0 && chunk_section_index < Chunk::n_sections);
     int section_x = x % ChunkSection::n;
     int section_y = y % ChunkSection::n;
     int section_z = z % ChunkSection::n;
@@ -290,22 +290,22 @@ struct World {
     int chunk_z = (z / ChunkSection::n);
     if (section_x == 0) {
       int neighbour_index = (chunk_x - 1) + n * chunk_z;
-      if (neighbour_index >= 0)
+      if (chunk_x > 0)
         mark_dirty(neighbour_index, chunk_section_index);
     }
     if (section_x == ChunkSection::n - 1) {
       int neighbour_index = (chunk_x + 1) + n * chunk_z;
-      if (neighbour_index < chunks.size())
+      if (chunk_x + 1 < n)
         mark_dirty(neighbour_index, chunk_section_index);
     }
     if (section_z == 0) {
       int neighbour_index = chunk_x + n * (chunk_z - 1);
-      if (neighbour_index >= 0)
+      if (chunk_z > 0)
         mark_dirty(neighbour_index, chunk_section_index);
     }
     if (section_z == ChunkSection::n - 1) {
       int neighbour_index = chunk_x + n * (chunk_z + 1);
-      if (neighbour_index < chunks.size())
+      if (chunk_z + 1 < n)
         mark_dirty(neighbour_index, chunk_section_index);
     }
     if (section_y == 0) {
