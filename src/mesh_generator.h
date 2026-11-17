@@ -107,7 +107,10 @@ struct MeshGenerator {
     // Upload mesh data from CPU (RAM) to GPU (VRAM) memory
     // todo: can this be done from a separate thread - probs main only.
     // todo: separate this step so that the mesh building can happen on a non main thread
+    auto upload_start = Timer::now();
     UploadMesh(&mesh, false);
+    const double upload_ms = Timer::elapsed_ms(upload_start);
+    TraceLog(LOG_INFO, "Mesh GPU upload: %.3f ms", upload_ms);
 
     return mesh;
   }
@@ -120,7 +123,7 @@ private:
   // be separate?
   // todo: just return a std::vector<Quad> where a quad has all the info required for rendering
   std::vector<std::tuple<BlockType, Face::Direction, Vector3Int>> faces_from(
-    ChunkSection chunk_section
+    const ChunkSection& chunk_section
   ) {
     std::vector<std::tuple<BlockType, Face::Direction,Vector3Int>> faces;
 
