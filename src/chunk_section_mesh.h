@@ -43,7 +43,7 @@ struct ChunkSectionMesh {
     auto start = Timer::now();
     std::optional<Mesh> mesh = mesh_generator.from(chunk_section);
     TraceLog(LOG_INFO, std::format(
-      "Generated mesh in: {}",
+      "Generate and upload mesh in: {}",
       Timer::elapsed_ms(start)
       ).c_str()
     );
@@ -56,11 +56,6 @@ struct ChunkSectionMesh {
       model = std::nullopt;
       return;
     }
-    TraceLog(LOG_INFO, std::format(
-      "Unload old model in: {}",
-      Timer::elapsed_ms(start)
-      ).c_str()
-    );
     if (!model) {
       create_model(*mesh);
       TraceLog(LOG_INFO, std::format(
@@ -70,13 +65,11 @@ struct ChunkSectionMesh {
     );
     }
     else {
+      auto unload_start = Timer::now();
       UnloadMesh(model->meshes[0]);
+      const double unload_ms = Timer::elapsed_ms(unload_start);
       model->meshes[0] = *mesh;
-      TraceLog(LOG_INFO, std::format(
-        "Unload old mesh in: {}",
-        Timer::elapsed_ms(start)
-      ).c_str()
-    );
+      TraceLog(LOG_INFO, "Mesh GPU/CPU unload: %.3f ms", unload_ms);
     }
 
 
