@@ -7,6 +7,8 @@
 #include "world.h"
 #include "face.h"
 #include "texture_atlas.h"
+#include "timer.h"
+#include "mesh_profiling.h"
 
 
 // todo: separate out into .h and .cpp
@@ -20,6 +22,7 @@ struct MeshGenerator {
     // step 1:
     // todo: quads!
     // build up a conceptual list of faces to render
+    auto cpu_start = Timer::now();
     auto faces_to_render = faces_from(chunk_section);
     TraceLog(LOG_INFO, std::format(
       "faces_to_render:{} for {}",
@@ -107,10 +110,11 @@ struct MeshGenerator {
     // Upload mesh data from CPU (RAM) to GPU (VRAM) memory
     // todo: can this be done from a separate thread - probs main only.
     // todo: separate this step so that the mesh building can happen on a non main thread
+    MeshProfiling::cpu_build.add(Timer::elapsed_ms(cpu_start));
     auto upload_start = Timer::now();
     UploadMesh(&mesh, false);
     const double upload_ms = Timer::elapsed_ms(upload_start);
-    TraceLog(LOG_INFO, "Mesh GPU upload: %.3f ms", upload_ms);
+    MeshProfiling::gpu_upload.add(upload_ms);
 
     return mesh;
   }
