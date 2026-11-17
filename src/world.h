@@ -6,6 +6,7 @@
 #include <vector>
 #include <tuple>
 #include <cassert>
+#include <unordered_set>
 
 #include "raylib.h"
 #include "raymath.h"
@@ -13,12 +14,13 @@
 #include "face.h"
 
 
+// the order of these is tied to the textures_lookup in texture_atlas
 enum class BlockType: uint8_t {
+  AIR,
   GRASS,
   DIRT,
   STONE,
-  BEDROCK,
-  Air
+  BEDROCK
 };
 
 struct Block {
@@ -95,8 +97,14 @@ struct ChunkSection {
     return ConstBlocks(storage.data(), n, n, n);
   }
 
-  void fill(BlockType block_type) {
+  bool fill(BlockType block_type) {
+    bool dirty = false;
+    for (BlockType & stored_type : storage) {
+      if (stored_type != block_type)
+        dirty = true;
+    }
     storage.fill(block_type);
+    return dirty;
   }
 
   bool contains(Vector3Int position) const {
@@ -114,7 +122,7 @@ struct ChunkSection {
 
 private:
   // todo: packedArray based on palette
-  std::array<BlockType, blockCount> storage{BlockType::Air};
+  std::array<BlockType, blockCount> storage{};
 
 };
 
@@ -145,13 +153,16 @@ struct Chunk {
   // Chunk& operator=(const Chunk &chunk) = delete;
   // Chunk& operator=(Chunk &&chunk) = delete;
 
-  void fill_section(BlockType block_type, int i) {
-    chunk_sections[i].fill(block_type);
-  }
-  void fill(BlockType block_type) {
-    for (auto & chunk_section : chunk_sections) {
-      chunk_section.fill(block_type);
+  // returns the indexes of the sections that are now dirty
+  std::vector<int> fill(BlockType block_type) {
+    std::vector<int> dirty{};
+    for (int i = 0; i < chunk_sections.size(); i++) {
+      ChunkSection & chunk_section = chunk_sections[i];
+      if (chunk_section.fill(block_type)) {
+        dirty.push_back(i);
+      }
     }
+    return dirty;
   }
 
   static constexpr int n_sections = 4;
@@ -190,9 +201,14 @@ struct World {
 
 
 	void initialise() {
-    for(Chunk &chunk : chunks) {
-      //todo: fill should say which blocks are marked dirty
-      chunk.fill(BlockType::Air); // Reset player-edited blocks too.
+    for(int i = 0; i < chunks.size(); i++) {
+      Chunk &chunk = chunks[i];
+
+      // Reset player-edited blocks too.
+      std::vector<int> dirty = chunk.fill(BlockType::AIR);
+      for (int section : dirty) {
+        mark_dirty(i, section);
+      }
 
       auto blocks = chunk.chunk_sections[0].blocks();
       for (int x = 0; x < ChunkSection::n; x++) {
@@ -206,21 +222,19 @@ struct World {
           blocks[x,5,z] = BlockType::DIRT;
 
           blocks[x,6,z] = BlockType::GRASS;
+          mark_dirty(i, 0);
         }
       }
 
-      // chunk.fill_section(BlockType::Grass, 1);
     }
-    mark_all_dirty();
 
 	}
 
-  void mark_all_dirty() {
-    for (int i = 0; i < chunks.size(); i++) {
-      for (int j = 0; j < chunks[i].chunk_sections.size(); j++) {
-        dirty_chunk_sections.push_back({i,j});
-      }
-    }
+  void mark_dirty(int chunk_index, int chunk_section_index) {
+    assert(chunk_index >= 0 && chunk_index < chunks.size());
+    assert(chunk_section_index >= 0 &&  chunk_section_index < Chunk::n_sections);
+
+    dirty_chunk_sections.emplace(chunk_index, chunk_section_index);
   }
 
 	bool contains(Vector3Int position) const {
@@ -268,7 +282,7 @@ struct World {
       .chunk_sections[chunk_section_index]
       .blocks()[section_x, section_y, section_z] = block_type;
 
-    dirty_chunk_sections.push_back({index, chunk_section_index});
+    mark_dirty(index, chunk_section_index);
 
     // todo: pull into separate place - its handy
     // todo: this is messy as
@@ -277,32 +291,32 @@ struct World {
     if (section_x == 0) {
       int neighbour_index = (chunk_x - 1) + n * chunk_z;
       if (neighbour_index >= 0)
-        dirty_chunk_sections.push_back({neighbour_index, chunk_section_index});
+        mark_dirty(neighbour_index, chunk_section_index);
     }
     if (section_x == ChunkSection::n - 1) {
       int neighbour_index = (chunk_x + 1) + n * chunk_z;
       if (neighbour_index < chunks.size())
-        dirty_chunk_sections.push_back({neighbour_index, chunk_section_index});
+        mark_dirty(neighbour_index, chunk_section_index);
     }
     if (section_z == 0) {
       int neighbour_index = chunk_x + n * (chunk_z - 1);
       if (neighbour_index >= 0)
-        dirty_chunk_sections.push_back({neighbour_index, chunk_section_index});
+        mark_dirty(neighbour_index, chunk_section_index);
     }
     if (section_z == ChunkSection::n - 1) {
       int neighbour_index = chunk_x + n * (chunk_z + 1);
       if (neighbour_index < chunks.size())
-        dirty_chunk_sections.push_back({neighbour_index, chunk_section_index});
+        mark_dirty(neighbour_index, chunk_section_index);
     }
     if (section_y == 0) {
       int neighbour_index = chunk_section_index - 1;
       if (neighbour_index >= 0)
-        dirty_chunk_sections.push_back({index, neighbour_index});
+        mark_dirty(index, neighbour_index);
     }
     if (section_y == ChunkSection::n - 1) {
       int neighbour_index = chunk_section_index + 1;
       if (neighbour_index < Chunk::n_sections)
-        dirty_chunk_sections.push_back({index, neighbour_index});
+        mark_dirty(index, neighbour_index);
     }
 
   }
@@ -350,8 +364,16 @@ struct World {
     {width, height, width}
   };
 
+  struct IntPairHash {
+    std::size_t operator()(const std::pair<int,int> & index) const {
+      auto h1 = std::hash<int>{}(index.first);
+      auto h2 = std::hash<int>{}(index.second);
+      return h1 ^ (h2 << 1);
+    }
+  };
 
-  std::vector<std::tuple<int, int>> dirty_chunk_sections;
+
+  std::unordered_set<std::pair<int,int>,IntPairHash> dirty_chunk_sections;
 
   // number of chunks per x / z direction
   std::vector<Chunk> chunks;

@@ -30,14 +30,14 @@ bool WorldPhysics::is_grounded(BoundingBox player) const {
   //todo: base this off off collisions and how it changes the y position
   for (Vector3Int block_pos : controller.blocks_overlapping_with_player()) {
     BlockType block_type = world.get(block_pos);
-    if (block_type == BlockType::Air) {
+    if (block_type == BlockType::AIR) {
       continue;
     }
 
     // The top of a block buried beneath another full cube isn't a
     // walkable surface. This also avoids false jumps at wall seams.
     if (block_pos.y + 1 < World::height &&
-        world.get(block_pos.x, block_pos.y + 1, block_pos.z) != BlockType::Air) {
+        world.get(block_pos.x, block_pos.y + 1, block_pos.z) != BlockType::AIR) {
       continue;
     }
 
@@ -83,7 +83,7 @@ void WorldPhysics::move_player(
 
     for (Vector3Int block_pos : controller.blocks_overlapping_with_player()) {
       BlockType block_type = world.get(block_pos);
-      if (block_type == BlockType::Air ||
+      if (block_type == BlockType::AIR ||
           !overlap(controller.bounds(), Block::bounds(block_pos, block_type))) {
         continue;
       }

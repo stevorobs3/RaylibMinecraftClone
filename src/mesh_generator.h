@@ -124,7 +124,7 @@ private:
   ) {
     std::vector<std::tuple<BlockType, Face::Direction,Vector3Int>> faces;
 
-    auto blocks = chunk_section.blocks();
+    auto blocks = chunk_section.const_blocks();
     // internal blocks can use the efficient lookup of blocks
     // todo: maybe have an iterator in the chunk_section for:
     // 1) internal blocks
@@ -132,11 +132,11 @@ private:
     for (int x = 1; x < ChunkSection::n - 1; x++) {
       for (int y = 1; y < ChunkSection::n - 1; y++) {
         for (int z = 1; z < ChunkSection::n - 1; z++) {
-          if (blocks[x,y,z] == BlockType::Air) continue;
+          if (blocks[x,y,z] == BlockType::AIR) continue;
           for (Face::Direction dir : Face::directions) {
             auto neighbour = chunk_section.internal_neighbour(dir,{x,y,z});
             //todo: deeper checks here for different block shapes
-            if (neighbour == BlockType::Air) {
+            if (neighbour == BlockType::AIR) {
               faces.push_back({blocks[x,y,z], dir, {x,y,z}});
             }
           }
@@ -152,14 +152,14 @@ private:
       for (int x = 0; x < ChunkSection::n; x++) {
         for (int z = 0; z < ChunkSection::n; z++) {
           auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
-          if (chunk_section.blocks()[x,y,z] == BlockType::Air) continue;
+          if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
           for (Face::Direction dir : Face::directions) {
             auto neighbour_pos = block_position + Face::normal(dir);
             // todo: remove this once world is infinitely generated
             if (!chunk_section.world.contains(neighbour_pos))
               continue;
             BlockType neighbour = chunk_section.world.get(neighbour_pos);
-            if (neighbour == BlockType::Air) {
+            if (neighbour == BlockType::AIR) {
               faces.push_back({
                 chunk_section.world.get(block_position),
                 dir,
@@ -177,14 +177,14 @@ private:
       for (int y = 1; y < ChunkSection::n - 1; y++) {
         for (int z = 0; z < ChunkSection::n; z++) {
           auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
-          if (chunk_section.blocks()[x,y,z] == BlockType::Air) continue;
+          if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
           for (Face::Direction dir : Face::directions) {
             auto neighbour_pos = block_position + Face::normal(dir);
             // todo: remove this once world is infinitely generated
             if (!chunk_section.world.contains(neighbour_pos))
               continue;
             auto neighbour = chunk_section.world.get(neighbour_pos);
-            if (neighbour == BlockType::Air) {
+            if (neighbour == BlockType::AIR) {
               faces.push_back({
                 chunk_section.world.get(block_position),
                 dir,
@@ -204,14 +204,14 @@ private:
         // we've already done y = 0 and y = ChunkSection::n - 1 for top and bottom faces
         for (int y = 1; y < ChunkSection::n - 1; y++) {
           auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
-          if (chunk_section.blocks()[x,y,z] == BlockType::Air) continue;
+          if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
           for (Face::Direction dir : Face::directions) {
             auto neighbour_pos = block_position + Face::normal(dir);
             // todo: remove this once world is infinitely generated
             if (!chunk_section.world.contains(neighbour_pos))
               continue;
             auto neighbour = chunk_section.world.get(neighbour_pos);
-            if (neighbour == BlockType::Air) {
+            if (neighbour == BlockType::AIR) {
               faces.push_back({
                 chunk_section.world.get(block_position),
                 dir,

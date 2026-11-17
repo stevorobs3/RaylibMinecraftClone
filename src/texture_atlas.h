@@ -37,6 +37,7 @@ struct TextureAtlas {
 
   static constexpr int textures_lookup[][6]{
     // EAST WEST UP DOWN NORTH SOUTH
+    {-1,-1,-1,-1,-1,-1}, // air - should never be used
     {2,2,1,0,2,2}, // grass
     {0,0,0,0,0,0}, // dirt
     {3,3,3,3,3,3}, // stone

@@ -14,7 +14,7 @@ void Player::find_target(const World& world, const Camera3D& camera) {
   target.reset();
   for (Vector3Int grid_position : world.positions_within_range(camera.position, nearest)) {
     BlockType block_type = world.get(grid_position);
-    if (block_type == BlockType::Air) {
+    if (block_type == BlockType::AIR) {
       continue;
     }
     const BoundingBox bounds = Block::bounds(grid_position, block_type);
@@ -45,7 +45,7 @@ void Player::manipulate_blocks(
 
   const BlockHit hit = *target;
   if (input.wants_remove_block() && world.get(hit.position) != BlockType::BEDROCK) {
-    world.set(hit.position, BlockType::Air);
+    world.set(hit.position, BlockType::AIR);
     target.reset();
     return;
   }
@@ -57,7 +57,7 @@ void Player::manipulate_blocks(
     }
 
     BlockType block_type = world.get(cell);
-    if (block_type == BlockType::Air &&
+    if (block_type == BlockType::AIR &&
         !physics.player_overlaps_block(cell, block_type)) {
       world.set(cell, BlockType::DIRT);
       target.reset();

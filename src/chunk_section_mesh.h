@@ -41,12 +41,7 @@ struct ChunkSectionMesh {
     // todo: is it better to unload the mesh or re-use it in place? (a later optimisation worth considering)
     std::optional<Mesh> mesh = mesh_generator.from(chunk_section);
     if(!mesh) {
-      // its a logical error if the mesh is asked to be rebuilt, and it goes from
-      // empty mesh -> empty mesh?
-      // todo: ensure that when a neighbouring mesh has a block on the perimeter updated
-      // that it only marks meshes dirty if they are non-empty.
-      // todo: enable this assert
-      // assert(model != std::nullopt);
+      assert(model != std::nullopt);
       if (model) {
         UnloadModel(*model);
       }
