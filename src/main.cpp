@@ -11,6 +11,7 @@
 #include "world_physics.h"
 #include "render.h"
 #include "world_mesh.h"
+#include "mesh_profiling.h"
 
 Vector3 player_initial_position{World::width / 2.0f, 1.0f, World::width / 2.0f};
 
@@ -31,6 +32,7 @@ void reset(
 }
 
 int main() {
+  SetTraceLogLevel(LOG_WARNING);  // Suppress raylib INFO logs inside timed GPU calls.
   SetConfigFlags(FLAG_WINDOW_RESIZABLE);
   InitWindow(1280, 720, "Raylib minecraft clone");
   DisableCursor();
@@ -121,5 +123,6 @@ int main() {
   texture_atlas.unload();
 
   CloseWindow();
+  MeshProfiling::print_summary();
   return 0;
 }
