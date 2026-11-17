@@ -1,7 +1,6 @@
 #pragma once
 
 #include <raylib.h>
-#include <unordered_map>
 #include <vector>
 
 
@@ -10,7 +9,7 @@
 #include "player.h"
 #include "player_controller.h"
 
-struct Timer {
+struct DebugTimer {
   double value;
   double max;
 
@@ -42,7 +41,7 @@ struct Timer {
 };
 
 struct DebugTimers {
-  Timer apply_look, find_target, manipulate_blocks, controller_update, render;
+  DebugTimer apply_look, find_target, manipulate_blocks, controller_update, mesh_rebuild, render;
 };
 
 

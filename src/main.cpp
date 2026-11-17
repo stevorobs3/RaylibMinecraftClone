@@ -1,8 +1,8 @@
 #include <raylib.h>
 #include "raymath.h"
 
-#include <chrono>
 
+#include "timer.h"
 #include "player.h"
 #include "player_controller.h"
 #include "player_input.h"
@@ -28,18 +28,6 @@ void reset(
   if (world_mesh)
     world_mesh->rebuild_dirty_meshes();
 
-}
-
-auto now() {
-  return std::chrono::steady_clock::now();
-}
-
-double elapsed_ms(auto & start) {
-  double duration =  std::chrono::duration<double, std::milli>(
-        now() - start
-  ).count();
-  start = now();
-  return duration;
 }
 
 int main() {
@@ -80,7 +68,7 @@ int main() {
   bool show_physics_debug = false;
 
   auto timers = DebugTimers{};
-  auto start = now();
+  auto start = Timer::now();
 
 
   while (!WindowShouldClose()) {
@@ -95,24 +83,24 @@ int main() {
 
     // The targeting ray sees the mouse movement of this frame.
 
-    start = now();
+    start = Timer::now();
     controller.apply_look(input.look_delta);
-    timers.apply_look = elapsed_ms(start);
+    timers.apply_look = Timer::elapsed_ms(start);
     player.find_target(world, controller.camera);
-    timers.find_target = elapsed_ms(start);
+    timers.find_target = Timer::elapsed_ms(start);
     player.manipulate_blocks(world, physics, controller, input);
-    timers.manipulate_blocks = elapsed_ms(start);
+    timers.manipulate_blocks = Timer::elapsed_ms(start);
 
     // Constant-acceleration movement and AABB collisions at 60 Hz.
     controller.update(input.movement_command(), GetFrameTime(), physics);
-    timers.controller_update = elapsed_ms(start);
+    timers.controller_update = Timer::elapsed_ms(start);
 
 
     std::vector<Vector3Int> blocks_overlapping_player = controller.blocks_overlapping_with_player();
 
     // todo: off main thread
     world_mesh.rebuild_dirty_meshes();
-
+    timers.mesh_rebuild = Timer::elapsed_ms(start);
 
     BeginDrawing();
     ClearBackground(RAYWHITE);
@@ -121,7 +109,7 @@ int main() {
     renderer.draw_world();
     renderer.draw_player();
     // todo: this doesn't really represent render time
-    timers.render = elapsed_ms(start);
+    timers.render = Timer::elapsed_ms(start);
 
     EndMode3D();
     renderer.draw_ui(show_physics_debug, timers, blocks_overlapping_player);

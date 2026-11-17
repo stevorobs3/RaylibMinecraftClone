@@ -7,6 +7,7 @@
 
 #include "world.h"
 #include "mesh_generator.h"
+#include "timer.h"
 
 struct ChunkSectionMesh {
 
@@ -39,7 +40,14 @@ struct ChunkSectionMesh {
   void rebuild_mesh() {
 
     // todo: is it better to unload the mesh or re-use it in place? (a later optimisation worth considering)
+    auto start = Timer::now();
     std::optional<Mesh> mesh = mesh_generator.from(chunk_section);
+    TraceLog(LOG_INFO, std::format(
+      "Generated mesh in: {}",
+      Timer::elapsed_ms(start)
+      ).c_str()
+    );
+
     if(!mesh) {
       assert(model != std::nullopt);
       if (model) {
@@ -48,13 +56,30 @@ struct ChunkSectionMesh {
       model = std::nullopt;
       return;
     }
+    TraceLog(LOG_INFO, std::format(
+      "Unload old model in: {}",
+      Timer::elapsed_ms(start)
+      ).c_str()
+    );
     if (!model) {
       create_model(*mesh);
+      TraceLog(LOG_INFO, std::format(
+        "Create new model in: {}",
+        Timer::elapsed_ms(start)
+      ).c_str()
+    );
     }
     else {
       UnloadMesh(model->meshes[0]);
       model->meshes[0] = *mesh;
+      TraceLog(LOG_INFO, std::format(
+        "Unload old mesh in: {}",
+        Timer::elapsed_ms(start)
+      ).c_str()
+    );
     }
+
+
 
   }
 

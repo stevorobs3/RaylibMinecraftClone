@@ -85,11 +85,12 @@ void Renderer::draw_ui(
 
   DrawText(
     std::format(
-      "timers: \napply_look:{}\nfind_target:{}\nmanipulate_blocks:{}\ncontroller_update:{}\nrender:{}",
+      "timers: \napply_look:{}\nfind_target:{}\nmanipulate_blocks:{}\ncontroller_update:{}\nmesh_rebuild:{}\nrender:{}",
       debug_timers.apply_look.to_string(),
       debug_timers.find_target.to_string(),
       debug_timers.manipulate_blocks.to_string(),
       debug_timers.controller_update.to_string(),
+      debug_timers.mesh_rebuild.to_string(),
       debug_timers.render.to_string()
     ).c_str(),
     8, 55, 18, BLACK
