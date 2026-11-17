@@ -10,8 +10,39 @@
 #include "player.h"
 #include "player_controller.h"
 
+struct Timer {
+  double value;
+  double max;
+
+  // todo: rebuilding a mesh takes about 40-60ms
+  // can that be sped up?
+  // reset every 5 seconds
+  int n = 300;
+  int count = 0;
+
+  void set_value(double new_value) {
+    count++;
+    if (count == n) {
+      count = 0;
+      max = 0;
+    }
+    if (new_value >= max)
+      max = new_value;
+    value = new_value;
+  }
+
+  void operator=(double new_value) {
+    set_value(new_value);
+  }
+
+  std::string to_string() {
+    return std::format("{:.2f}:({:.2f})",value,max);
+  }
+
+};
+
 struct DebugTimers {
-  double apply_look, find_target, manipulate_blocks, controller_update, render;
+  Timer apply_look, find_target, manipulate_blocks, controller_update, render;
 };
 
 
