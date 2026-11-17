@@ -27,7 +27,7 @@ void Renderer::draw_world() {
   rlSetLineWidth(5.0f);
 
   for (const Chunk& chunk : world.chunks) {
-    DrawBoundingBox(chunk.bounds(), BLACK);
+    DrawBoundingBox(chunk.bounds, BLACK);
   }
   rlDrawRenderBatchActive();
   rlSetLineWidth(original_line_width);

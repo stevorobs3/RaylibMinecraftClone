@@ -105,7 +105,6 @@ struct ChunkSection {
       position.z >= 0 && position.z < ChunkSection::n;
   }
 
-  // todo: add similar asserts throughout the codebase!
   BlockType internal_neighbour(Face::Direction dir, Vector3Int local_position) const {
     assert(contains(local_position));
     auto neighbour_pos = local_position + Face::normal(dir);
@@ -123,6 +122,9 @@ private:
 struct Chunk {
 
   World &world;
+  Vector3 origin;
+  BoundingBox bounds;
+
 
   Chunk(World& world, Vector3 origin) : world(world), origin(origin) {
     chunk_sections.reserve(n_sections);
@@ -131,6 +133,10 @@ struct Chunk {
         world, origin + Vector3(0, ChunkSection::n * i, 0)
       );
     }
+    bounds = {
+      origin,
+      origin + Vector3(ChunkSection::n, n_sections*ChunkSection::n, ChunkSection::n)
+    };
   }
 
   // todo: explicitly disallow copying and moving
@@ -148,19 +154,8 @@ struct Chunk {
     }
   }
 
-  //todo: can be assigned on creation
-  BoundingBox bounds() const {
-    return BoundingBox{
-      origin,
-      origin + Vector3(ChunkSection::n, n_sections*ChunkSection::n, ChunkSection::n)
-    };
-  }
-
   static constexpr int n_sections = 4;
   std::vector<ChunkSection> chunk_sections;
-
-private:
-  Vector3 origin;
 
 };
 
