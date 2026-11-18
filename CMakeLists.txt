@@ -69,17 +69,23 @@ target_link_libraries(minecraft_clone PRIVATE
 # Unit tests
 enable_testing()
 
-add_executable(minecraft_tests
-  tests/test_main.cpp
-  tests/test_example.cpp
+file(GLOB TEST_SOURCES CONFIGURE_DEPENDS
+		"${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp"
 )
+
+
+
+add_executable(minecraft_tests ${TEST_SOURCES})
 
 target_include_directories(minecraft_tests PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
 target_link_libraries(minecraft_tests PRIVATE
   minecraft_core
+  raylib
+  mdspan
 )
 
 add_test(NAME unit_tests COMMAND minecraft_tests)
