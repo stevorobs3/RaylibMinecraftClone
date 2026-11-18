@@ -95,6 +95,7 @@ if(BUILD_TESTING)
     add_executable(minecraft_tests
         tests/test_main.cpp
         tests/test_vector.cpp
+        tests/test_world_physics.cpp
     )
     target_include_directories(minecraft_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
