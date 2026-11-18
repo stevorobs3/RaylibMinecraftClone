@@ -8,6 +8,7 @@
 		"settings": {
 				"cmake_executable": "minecraft_clone.exe",
 				"cmake_target": "minecraft_clone",
+        "cmake_test_target": "minecraft_tests",
 
 				"LSP": {
 					"LSP-clangd": {

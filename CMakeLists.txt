@@ -33,23 +33,53 @@ file(GLOB SOURCES CONFIGURE_DEPENDS
 		"${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
 
-add_executable(minecraft_clone ${SOURCES})
+add_library(minecraft_core STATIC ${SOURCES})
 
-target_compile_definitions(minecraft_clone PRIVATE
+target_compile_definitions(minecraft_core PRIVATE
 		RAYMATH_ENABLE_CPP_OPERATORS
 )
 
-target_link_libraries(minecraft_clone PRIVATE
+target_link_libraries(minecraft_core PRIVATE
   raylib
   std::mdspan
 )
 # Deliberately use raylib 6.2's bundled GLAD declarations. This is an
 # internal raylib header; keep the raylib version pinned above.
-target_include_directories(minecraft_clone PRIVATE "${raylib_SOURCE_DIR}/src")
+target_include_directories(minecraft_core PRIVATE
+  "${raylib_SOURCE_DIR}/src")
 
 
-add_custom_command(TARGET minecraft_clone POST_BUILD
+add_custom_command(TARGET minecraft_core POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
   "${CMAKE_SOURCE_DIR}/assets/faithful/assets/minecraft/textures/block"
   "$<TARGET_FILE_DIR:minecraft_clone>/assets"
   COMMENT "Copying game assets")
+
+# Main application
+add_executable(minecraft_clone
+  src/main.cxx
+)
+
+target_link_libraries(minecraft_clone PRIVATE
+  minecraft_core
+  raylib
+  mdspan
+)
+
+# Unit tests
+enable_testing()
+
+add_executable(minecraft_tests
+  tests/test_main.cpp
+  tests/test_example.cpp
+)
+
+target_include_directories(minecraft_tests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
+)
+
+target_link_libraries(minecraft_tests PRIVATE
+  minecraft_core
+)
+
+add_test(NAME unit_tests COMMAND minecraft_tests)
