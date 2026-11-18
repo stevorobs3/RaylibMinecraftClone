@@ -27,7 +27,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(mdspan)
 
-# All game implementations live in this library. Keep main.cxx out of it.
+# All game implementations live in this library. Keep main.cpp out of it.
 # Listing sources explicitly avoids silently missing files or compiling
 # unintended sources when directories/extensions change.
 add_library(minecraft_core STATIC
@@ -53,7 +53,7 @@ target_link_libraries(minecraft_core PUBLIC
 )
 
 # The application supplies only the entry point; everything else is in core.
-add_executable(minecraft_clone src/main.cxx)
+add_executable(minecraft_clone src/main.cpp)
 target_link_libraries(minecraft_clone PRIVATE minecraft_core)
 
 # Some application headers use raylib 6.2's bundled GLAD declarations.
