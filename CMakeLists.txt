@@ -40,6 +40,7 @@ add_library(minecraft_core STATIC
     src/rendering/world_mesh.cpp
     src/world/world.cpp
     src/world_physics.cpp
+    src/game.cpp
 )
 
 # Headers in src/ are shared by the game and tests.

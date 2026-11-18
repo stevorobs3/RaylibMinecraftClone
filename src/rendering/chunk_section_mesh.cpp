@@ -6,13 +6,7 @@ ChunkSectionMesh::ChunkSectionMesh(
   TextureAtlas &texture_atlas
 ): chunk_section(chunk_section),
    mesh_generator(texture_atlas),
-   texture_atlas(texture_atlas) {
-
-  std::optional<Mesh> mesh = mesh_generator.from(chunk_section);
-  if (!mesh) return;
-
-  create_model(*mesh);
-}
+   texture_atlas(texture_atlas) {}
 
 void ChunkSectionMesh::create_model(Mesh &mesh) {
   model = LoadModelFromMesh(mesh);
@@ -33,7 +27,6 @@ void ChunkSectionMesh::rebuild_mesh() {
   std::optional<Mesh> mesh = mesh_generator.from(chunk_section);
 
   if(!mesh) {
-    assert(model != std::nullopt);
     if (model) {
       UnloadModel(*model);
     }

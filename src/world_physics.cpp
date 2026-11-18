@@ -1,12 +1,11 @@
 #include "world_physics.h"
-#include "player/player_controller.h"
 #include "raylib.h"
 
 #include <algorithm>
 #include <cmath>
 // todo: what asserts are needed here?
 
-bool overlap(BoundingBox a, BoundingBox b) {
+bool overlap(const BoundingBox a, const BoundingBox b) {
   return a.min.x < b.max.x && a.max.x > b.min.x &&
          a.min.y < b.max.y && a.max.y > b.min.y &&
          a.min.z < b.max.z && a.max.z > b.min.z;
@@ -14,21 +13,26 @@ bool overlap(BoundingBox a, BoundingBox b) {
 
 bool WorldPhysics::player_overlaps_block(
   Vector3Int cell,
-  BlockType block_type
+  BlockType block_type,
+  const BoundingBox player_bounds
 ) const {
   return overlap(
-    controller.bounds(),
+    player_bounds,
     Block::bounds(cell, block_type)
   );
 }
 
-bool WorldPhysics::is_grounded(BoundingBox player) const {
+bool WorldPhysics::is_grounded(
+  const BoundingBox player,
+  const std::vector<Vector3Int> &blocks_overlapping_with_player
+) const {
   // Accept small numerical gaps, but only exposed block TOP faces.
   constexpr float height_tolerance = 0.04f;
   constexpr float edge_tolerance = 0.002f;
 
   //todo: base this off off collisions and how it changes the y position
-  for (Vector3Int block_pos : controller.blocks_overlapping_with_player()) {
+  for (Vector3Int block_pos : blocks_overlapping_with_player) {
+
     BlockType block_type = world.get(block_pos);
     if (block_type == BlockType::AIR) {
       continue;
@@ -65,7 +69,9 @@ void WorldPhysics::move_player(
   Vector3& feet,
   Vector3& velocity,
   Vector3 size,
-  Vector3 displacement
+  Vector3 displacement,
+  const std::vector<Vector3Int> &blocks_overlapping_with_player,
+  const BoundingBox player_bounds
 ) const {
   // Restore the original axis-separated AABB collision approach:
   // horizontal motion first, then vertical falling / jumping.
@@ -81,10 +87,10 @@ void WorldPhysics::move_player(
                         axis == 'y' ? &feet.y : &feet.z;
     *coordinate += delta;
 
-    for (Vector3Int block_pos : controller.blocks_overlapping_with_player()) {
+    for (Vector3Int block_pos : blocks_overlapping_with_player) {
       BlockType block_type = world.get(block_pos);
       if (block_type == BlockType::AIR ||
-          !overlap(controller.bounds(), Block::bounds(block_pos, block_type))) {
+          !overlap(player_bounds, Block::bounds(block_pos, block_type))) {
         continue;
       }
 

@@ -5,6 +5,7 @@ WorldMesh::WorldMesh(
   World &world,
   TextureAtlas& texture_atlas
 ) : world(world), texture_atlas(texture_atlas) {
+  TraceLog(LOG_INFO, "Creating WorldMesh");
 // todo: more generally - what happens if something like the push_back fails?
   // todo: more generally - what error handling am I missing?
   // todo: more generally - the mesh generation requires run-time allocations, can this be mitigated / minimised / correctly error handled?
@@ -27,6 +28,12 @@ void WorldMesh::rebuild_dirty_meshes() {
     chunk_section_meshes[index].rebuild_mesh();
   }
   world.dirty_chunk_sections.clear();
+}
+
+void WorldMesh::rebuild_all_meshes() {
+  for (ChunkSectionMesh & c: chunk_section_meshes) {
+    c.rebuild_mesh();
+  }
 }
 
 void WorldMesh::unload() {

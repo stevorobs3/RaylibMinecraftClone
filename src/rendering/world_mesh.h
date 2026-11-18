@@ -16,6 +16,7 @@ struct WorldMesh {
   //todo: handle async things
   void rebuild_dirty_meshes();
   void unload();
+  void rebuild_all_meshes();
 
   // todo: remove those that are:
   // 1) outside the camera (frustrum culling)

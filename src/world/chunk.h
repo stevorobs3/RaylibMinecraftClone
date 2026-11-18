@@ -16,6 +16,7 @@ struct Chunk {
 
 
   Chunk(World& world, Vector3 origin) : world(world), origin(origin) {
+    TraceLog(LOG_INFO, std::format("Creating Chunk:{}",to_string(origin)).c_str());
     chunk_sections.reserve(n_sections);
     for (int i = 0; i < n_sections; i++) {
       chunk_sections.emplace_back(

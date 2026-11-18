@@ -2,6 +2,7 @@
 #include "world.h"
 
 World::World() {
+  TraceLog(LOG_INFO, "Creating World");
   chunks.reserve(n * n);
   for (int z = 0; z < n; z++) {
     for (int x = 0; x < n; x++) {
@@ -17,6 +18,7 @@ World::World() {
 }
 
 void World::initialise() {
+  TraceLog(LOG_INFO, "Initialising World");
   for(int i = 0; i < chunks.size(); i++) {
     Chunk &chunk = chunks[i];
 
@@ -66,9 +68,11 @@ BlockType World::get(int x, int y, int z) const {
   int section_x = x % ChunkSection::n;
   int section_y = y % ChunkSection::n;
   int section_z = z % ChunkSection::n;
-  return chunks[index]
+  BlockType block_type =  chunks[index]
     .chunk_sections[chunk_section_index]
     .const_blocks()[section_x, section_y, section_z];
+
+  return block_type;
 }
 
 ChunkSection& World::get_chunk_section(

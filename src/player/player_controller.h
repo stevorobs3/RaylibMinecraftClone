@@ -21,30 +21,37 @@ struct PlayerController {
   Vector3 feet{};
   Vector3 velocity{};
   bool grounded = false;
-  Camera3D camera{};
 
 
 
-  PlayerController(World &world, Camera3D camera, Vector3 feet, Vector3 size);
+  PlayerController(
+    const World &world,
+    const WorldPhysics &world_physics,
+    Camera3D &camera,
+    Vector3 feet,
+    Vector3 size
+  );
 
   void apply_look(Vector2 mouse_delta);
   void update(
     const PlayerMovementInput& input,
-    float frame_dt,
-    const WorldPhysics& world
+    float frame_dt
   );
-  void reset(Vector3 feet, const WorldPhysics& world);
+  void reset(Vector3 feet);
 
   BoundingBox bounds() const;
 
   static constexpr float eye_height = 1.62f;
   std::vector<Vector3Int> blocks_overlapping_with_player() const;
 
+
 private:
   void sync_camera();
 
   Vector3 size{};
-  World &world;
+  const World &world;
+  const WorldPhysics &world_physics;
+  Camera3D &camera;
   float yaw = 0.0f;
   float pitch = 0.0f;
 

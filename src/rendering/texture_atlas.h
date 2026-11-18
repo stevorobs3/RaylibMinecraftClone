@@ -17,8 +17,6 @@ static constexpr int MIP_LEVELS = 5; // 64*64 ...4*4
 
 using ImageMips = std::array<Image, MIP_LEVELS>;
 
-
-// todo: pull implementation into .cpp file
 struct TextureAtlas {
   Texture2D texture{};
 

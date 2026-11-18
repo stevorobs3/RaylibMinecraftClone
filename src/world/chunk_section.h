@@ -7,7 +7,7 @@
 #include "raymath.h"
 
 #include "block.h"
-#include "quad.h"
+#include "rendering/quad.h"
 
 struct World;
 
@@ -34,7 +34,9 @@ struct ChunkSection {
       bounds{
         origin,
         origin + Vector3(n, n, n)
-      } {}
+      } {
+        TraceLog(LOG_INFO, std::format("Creating ChunkSection:{}",to_string(origin)).c_str());
+      }
 
   // todo: explicitly disallow copying and moving
   // ChunkSection(const ChunkSection &chunk_section) = delete;

@@ -2,6 +2,7 @@
 
 
 int main() {
-  // todo: pass in game specific config
-  return Game().run();
+  Game game;
+  int result = game.run();
+  return result;
 }

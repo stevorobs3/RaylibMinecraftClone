@@ -5,7 +5,6 @@
 
 #include "raylib.h"
 
-#include "world/world.h"
 #include "rendering/mesh_generator.h"
 
 struct ChunkSectionMesh {

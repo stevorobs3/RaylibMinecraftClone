@@ -6,7 +6,6 @@
 #include "raymath.h"
 
 
-
 std::array<Vector2, 4> TextureAtlas::lookup_texture_uv(
     BlockType block_type,
     Direction dir

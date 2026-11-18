@@ -37,6 +37,8 @@ void Player::manipulate_blocks(
   World& world,
   const WorldPhysics& physics,
   const PlayerController& controller,
+  //todo: don't depend on input, but on an enum of the type of thing to do
+  // Remove, Place, Nothing -> derive that off input
   const PlayerInput& input
 ) {
   if (!target) {
@@ -58,7 +60,10 @@ void Player::manipulate_blocks(
 
     BlockType block_type = world.get(cell);
     if (block_type == BlockType::AIR &&
-        !physics.player_overlaps_block(cell, block_type)) {
+        !physics.player_overlaps_block(
+          cell,
+          block_type,
+          controller.bounds())) {
       world.set(cell, BlockType::DIRT);
       target.reset();
     }

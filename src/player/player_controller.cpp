@@ -1,5 +1,6 @@
 #include "player_controller.h"
 
+#include "raylib.h"
 #include "world_physics.h"
 
 #include <algorithm>
@@ -8,8 +9,17 @@
 #include <numbers>
 
 PlayerController::PlayerController(
-  World &world, Camera3D camera, Vector3 feet, Vector3 size
-) : world(world), feet(feet), size(size), camera(camera) {
+  const World &world,
+  const WorldPhysics &world_physics,
+  Camera3D &camera,
+  Vector3 feet,
+  Vector3 size
+) : world(world),
+  world_physics(world_physics),
+  feet(feet),
+  size(size),
+  camera(camera) {
+  TraceLog(LOG_INFO, "Creating PlayerController");
   const Vector3 forward{
     camera.target.x - camera.position.x,
     camera.target.y - camera.position.y,
@@ -22,6 +32,10 @@ PlayerController::PlayerController(
     yaw = std::atan2(forward.z, forward.x);
     pitch = std::asin(std::clamp(forward.y / length, -1.0f, 1.0f));
   }
+  grounded = world_physics.is_grounded(
+    bounds(),
+    blocks_overlapping_with_player()
+  );
   sync_camera();
 }
 
@@ -44,20 +58,22 @@ void PlayerController::apply_look(Vector2 mouse_delta) {
   sync_camera();
 }
 
-void PlayerController::reset(Vector3 initial_feet, const WorldPhysics& world) {
+void PlayerController::reset(Vector3 initial_feet) {
   feet = initial_feet;
   velocity = {};
   step_accumulator = 0.0f;
   jump_buffer = 0.0f;
-  grounded = world.is_grounded(bounds());
+  grounded = world_physics.is_grounded(
+    bounds(),
+    blocks_overlapping_with_player()
+  );
   // Keep look direction through reset, as in the original game.
   sync_camera();
 }
 
 void PlayerController::update(
   const PlayerMovementInput& input,
-  float frame_dt,
-  const WorldPhysics& world
+  float frame_dt
 ) {
 
   if (input.jump) {
@@ -83,7 +99,10 @@ void PlayerController::update(
   step_accumulator += std::clamp(frame_dt, 0.0f, 0.1f);
   // todo: redo this to avoid tunneling
   while (step_accumulator >= fixed_dt) {
-    const bool supported = world.is_grounded(bounds());
+    const bool supported = world_physics.is_grounded(
+      bounds(),
+      blocks_overlapping_with_player()
+    );
     float vertical = velocity.y;
     const bool can_jump = supported && vertical <= 0.1f;
 
@@ -102,17 +121,21 @@ void PlayerController::update(
       vertical + gravity * fixed_dt,
       horizontal_velocity.z
     };
+    if (velocity.x != 0)
+      TraceLog(LOG_INFO, std::format("velocity:{}", to_string(velocity)).c_str());
 
-    world.move_player(
+    world_physics.move_player(
       feet, velocity, size,
-      {horizontal_velocity.x * fixed_dt, dy, horizontal_velocity.z * fixed_dt}
+      {horizontal_velocity.x * fixed_dt, dy, horizontal_velocity.z * fixed_dt},
+      blocks_overlapping_with_player(),
+      bounds()
     );
 
     jump_buffer = std::max(0.0f, jump_buffer - fixed_dt);
     step_accumulator -= fixed_dt;
   }
 
-  grounded = world.is_grounded(bounds()) && velocity.y <= 0.1f;
+  grounded = world_physics.is_grounded(bounds(), blocks_overlapping_with_player()) && velocity.y <= 0.1f;
   sync_camera();
 }
 
