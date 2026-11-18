@@ -2,15 +2,15 @@
 #include "raymath.h"
 
 
-#include "timer.h"
-#include "player/player.h"
-#include "player_controller.h"
 #include "player_input.h"
-#include "texture_atlas.h"
-#include "world.h"
+#include "player/player.h"
+#include "player/player_controller.h"
+#include "world/world.h"
+#include "rendering/texture_atlas.h"
+#include "rendering/render.h"
+#include "rendering/world_mesh.h"
+#include "timer.h"
 #include "world_physics.h"
-#include "render.h"
-#include "world_mesh.h"
 
 struct Game {
 

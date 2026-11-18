@@ -4,11 +4,11 @@
 
 #include <raylib.h>
 
-#include "vector.h"
-#include "world.h"
-#include "world_physics.h"
-#include "player_controller.h"
 #include "player_input.h"
+#include "player/player_controller.h"
+#include "vector.h"
+#include "world/world.h"
+#include "world_physics.h"
 
 struct BlockHit {
   Vector3Int position;

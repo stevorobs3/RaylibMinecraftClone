@@ -2,7 +2,7 @@
 #include <rlgl.h>
 
 #include "render.h"
-#include "world.h"
+#include "world/world.h"
 
 
 void Renderer::draw_world() {

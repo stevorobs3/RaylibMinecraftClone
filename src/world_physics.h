@@ -1,8 +1,8 @@
 #pragma once
 
 #include <raylib.h>
-#include "player_controller.h"
-#include "world.h"
+#include "player/player_controller.h"
+#include "world/world.h"
 
 // Minecraft-specific geometry rules for the current full-cube world.
 // No general-purpose physics engine, rigid bodies, or collider ownership.

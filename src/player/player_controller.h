@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "vector.h"
-#include "world.h"
+#include "world/world.h"
 
 struct WorldPhysics;
 
@@ -42,8 +42,6 @@ struct PlayerController {
 
 private:
   void sync_camera();
-
-  std::vector<int> ints_between(double min, double max, int max_value) const;
 
   Vector3 size{};
   World &world;

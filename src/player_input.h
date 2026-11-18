@@ -1,9 +1,10 @@
 #pragma once
 
 #include <raylib.h>
-#include "player_controller.h"
+#include "player/player_controller.h"
 
 // A snapshot of all game controls for one rendered frame.
+// struct PlayerInput poll();
 struct PlayerInput {
   Vector2 movement{};   // x: forward/back, y: right/left
   Vector2 look_delta{};
@@ -31,6 +32,7 @@ struct PlayerInput {
     input.toggle_debug = IsKeyPressed(KEY_F3);
     return input;
   }
+
 
   bool wants_place_block() const { return place_block; }
   bool wants_remove_block() const { return remove_block; }

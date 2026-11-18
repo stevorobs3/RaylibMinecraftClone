@@ -4,10 +4,10 @@
 #include <vector>
 
 
-#include "world.h"
+#include "world/world.h"
 #include "world_mesh.h"
 #include "player/player.h"
-#include "player_controller.h"
+#include "player/player_controller.h"
 
 struct DebugTimer {
   double value;

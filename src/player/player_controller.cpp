@@ -127,8 +127,9 @@ BoundingBox PlayerController::bounds() const {
   };
 }
 
+namespace {
 // todo: this needs a lot of testing
-std::vector<int> PlayerController::ints_between(double min, double max, int max_value) const {
+std::vector<int> ints_between(double min, double max, int max_value) {
   assert(max >= min);
 
 
@@ -147,6 +148,7 @@ std::vector<int> PlayerController::ints_between(double min, double max, int max_
     ints.push_back(floor_max + 1);
 
   return ints;
+}
 }
 
 // todo: this needs a lot of testing!

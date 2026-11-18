@@ -32,8 +32,13 @@ FetchContent_MakeAvailable(mdspan)
 # unintended sources when directories/extensions change.
 add_library(minecraft_core STATIC
     src/player/player.cpp
-    src/player_controller.cpp
-    src/render.cpp
+    src/player/player_controller.cpp
+    src/rendering/chunk_section_mesh.cpp
+    src/rendering/mesh_generator.cpp
+    src/rendering/render.cpp
+    src/rendering/texture_atlas.cpp
+    src/rendering/world_mesh.cpp
+    src/world/world.cpp
     src/world_physics.cpp
 )
 
