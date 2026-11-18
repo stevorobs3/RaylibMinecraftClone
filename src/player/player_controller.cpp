@@ -121,8 +121,6 @@ void PlayerController::update(
       vertical + gravity * fixed_dt,
       horizontal_velocity.z
     };
-    if (velocity.x != 0)
-      TraceLog(LOG_INFO, std::format("velocity:{}", to_string(velocity)).c_str());
 
     world_physics.move_player(
       feet, velocity, size,
