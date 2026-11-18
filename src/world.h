@@ -4,7 +4,6 @@
 #include <experimental/mdspan>
 #include <array>
 #include <vector>
-#include <tuple>
 #include <cassert>
 #include <unordered_set>
 

@@ -30,7 +30,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(mdspan)
 
 file(GLOB SOURCES CONFIGURE_DEPENDS
-		"${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+		"${CMAKE_CURRENT_SOURCE_DIR}/src/*/*.cpp"
 )
 
 add_library(minecraft_core STATIC ${SOURCES})
@@ -46,7 +46,8 @@ target_link_libraries(minecraft_core PRIVATE
 # Deliberately use raylib 6.2's bundled GLAD declarations. This is an
 # internal raylib header; keep the raylib version pinned above.
 target_include_directories(minecraft_core PRIVATE
-  "${raylib_SOURCE_DIR}/src")
+  "${raylib_SOURCE_DIR}/src"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 
 add_custom_command(TARGET minecraft_core POST_BUILD
@@ -55,10 +56,16 @@ add_custom_command(TARGET minecraft_core POST_BUILD
   "$<TARGET_FILE_DIR:minecraft_clone>/assets"
   COMMENT "Copying game assets")
 
+
 # Main application
 add_executable(minecraft_clone
   src/main.cxx
 )
+
+target_include_directories(minecraft_clone PRIVATE
+  "${raylib_SOURCE_DIR}/src"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
 
 target_link_libraries(minecraft_clone PRIVATE
   minecraft_core

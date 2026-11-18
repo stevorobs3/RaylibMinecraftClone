@@ -7,7 +7,6 @@
 
 #include "world.h"
 #include "mesh_generator.h"
-#include "timer.h"
 
 struct ChunkSectionMesh {
 
@@ -34,7 +33,7 @@ struct ChunkSectionMesh {
       UnloadModel(*model);
   }
 
-  //todo: this is slow and should be done off the main thread -> and some will need to
+  // todo: this is slow and should be done off the main thread -> and some will need to
   // be done on the main thread (uploading to gpu)
   // rebuild the mesh for this chunk
   void rebuild_mesh() {
@@ -55,14 +54,9 @@ struct ChunkSectionMesh {
 
     }
     else {
-      auto unload_start = Timer::now();
       UnloadMesh(model->meshes[0]);
-      const double unload_ms = Timer::elapsed_ms(unload_start);
       model->meshes[0] = *mesh;
-      MeshProfiling::mesh_unload.add(unload_ms);
     }
-
-
 
   }
 

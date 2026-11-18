@@ -6,7 +6,7 @@
 
 #include "world.h"
 #include "world_mesh.h"
-#include "player.h"
+#include "player/player.h"
 #include "player_controller.h"
 
 struct DebugTimer {

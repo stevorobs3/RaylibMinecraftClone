@@ -3,7 +3,7 @@
 
 
 #include "timer.h"
-#include "player.h"
+#include "player/player.h"
 #include "player_controller.h"
 #include "player_input.h"
 #include "texture_atlas.h"
@@ -11,7 +11,6 @@
 #include "world_physics.h"
 #include "render.h"
 #include "world_mesh.h"
-#include "mesh_profiling.h"
 
 struct Game {
 
@@ -107,7 +106,6 @@ struct Game {
     texture_atlas.unload();
 
     CloseWindow();
-    MeshProfiling::print_summary();
     return 0;
   }
 private:

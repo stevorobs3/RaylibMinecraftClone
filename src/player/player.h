@@ -1,8 +1,8 @@
 #pragma once
 
-#include <raylib.h>
-
 #include <optional>
+
+#include <raylib.h>
 
 #include "vector.h"
 #include "world.h"
