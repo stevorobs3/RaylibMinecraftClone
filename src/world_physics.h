@@ -30,8 +30,7 @@ struct WorldPhysics {
     Vector3& velocity,
     Vector3 size,
     Vector3 displacement,
-    const std::vector<Vector3Int> &blocks_overlapping_with_player,
-    const BoundingBox player_bounds
+    const std::vector<Vector3Int> &blocks_overlapping_with_player
   ) const;
 
 private:
