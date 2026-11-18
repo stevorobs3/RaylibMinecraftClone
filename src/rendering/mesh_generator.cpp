@@ -2,18 +2,19 @@
 #include <array>
 
 #include "mesh_generator.h"
-#include "face.h"
+#include "quad.h"
+#include "world/block.h"
+#include "world/chunk_section.h"
 
 namespace {
 
 // todo: also will need to be aware of block shape (half block, stairs, etc)
 // todo: quesion: can this be reused for things like chests? or would that need to
 // be separate?
-// todo: just return a std::vector<Quad> where a quad has all the info required for rendering
-std::vector<std::tuple<BlockType, Face::Direction, Vector3Int>> faces_from(
+std::vector<Quad> quads_from(
   const ChunkSection& chunk_section
 ) {
-  std::vector<std::tuple<BlockType, Face::Direction,Vector3Int>> faces;
+  std::vector<Quad> quads;
 
   auto blocks = chunk_section.const_blocks();
   // internal blocks can use the efficient lookup of blocks
@@ -24,11 +25,11 @@ std::vector<std::tuple<BlockType, Face::Direction, Vector3Int>> faces_from(
     for (int y = 1; y < ChunkSection::n - 1; y++) {
       for (int z = 1; z < ChunkSection::n - 1; z++) {
         if (blocks[x,y,z] == BlockType::AIR) continue;
-        for (Face::Direction dir : Face::directions) {
+        for (Direction dir : Quad::directions) {
           auto neighbour = chunk_section.internal_neighbour(dir,{x,y,z});
           //todo: deeper checks here for different block shapes
           if (neighbour == BlockType::AIR) {
-            faces.push_back({blocks[x,y,z], dir, {x,y,z}});
+            quads.push_back(Quad{blocks[x,y,z], dir, {x,y,z}});
           }
         }
       }
@@ -44,14 +45,14 @@ std::vector<std::tuple<BlockType, Face::Direction, Vector3Int>> faces_from(
       for (int z = 0; z < ChunkSection::n; z++) {
         auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
         if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
-        for (Face::Direction dir : Face::directions) {
-          auto neighbour_pos = block_position + Face::normal(dir);
+        for (Direction dir : Quad::directions) {
+          auto neighbour_pos = block_position + Quad::lookup_normal(dir);
           // todo: remove this once world is infinitely generated
           if (!chunk_section.world.contains(neighbour_pos))
             continue;
           BlockType neighbour = chunk_section.world.get(neighbour_pos);
           if (neighbour == BlockType::AIR) {
-            faces.push_back({
+            quads.push_back(Quad{
               chunk_section.world.get(block_position),
               dir,
               {x,y,z}
@@ -69,14 +70,14 @@ std::vector<std::tuple<BlockType, Face::Direction, Vector3Int>> faces_from(
       for (int z = 0; z < ChunkSection::n; z++) {
         auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
         if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
-        for (Face::Direction dir : Face::directions) {
-          auto neighbour_pos = block_position + Face::normal(dir);
+        for (Direction dir : Quad::directions) {
+          auto neighbour_pos = block_position + Quad::lookup_normal(dir);
           // todo: remove this once world is infinitely generated
           if (!chunk_section.world.contains(neighbour_pos))
             continue;
           auto neighbour = chunk_section.world.get(neighbour_pos);
           if (neighbour == BlockType::AIR) {
-            faces.push_back({
+            quads.push_back(Quad{
               chunk_section.world.get(block_position),
               dir,
               {x,y,z}
@@ -96,14 +97,14 @@ std::vector<std::tuple<BlockType, Face::Direction, Vector3Int>> faces_from(
       for (int y = 1; y < ChunkSection::n - 1; y++) {
         auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
         if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
-        for (Face::Direction dir : Face::directions) {
-          auto neighbour_pos = block_position + Face::normal(dir);
+        for (Direction dir : Quad::directions) {
+          auto neighbour_pos = block_position + Quad::lookup_normal(dir);
           // todo: remove this once world is infinitely generated
           if (!chunk_section.world.contains(neighbour_pos))
             continue;
           auto neighbour = chunk_section.world.get(neighbour_pos);
           if (neighbour == BlockType::AIR) {
-            faces.push_back({
+            quads.push_back(Quad{
               chunk_section.world.get(block_position),
               dir,
               {x,y,z}}
@@ -114,7 +115,7 @@ std::vector<std::tuple<BlockType, Face::Direction, Vector3Int>> faces_from(
     }
   }
 
-  return faces;
+  return quads;
 }
 
 }
@@ -125,9 +126,9 @@ std::optional<Mesh> MeshGenerator::from(ChunkSection &chunk_section) {
     // step 1:
     // todo: quads!
     // build up a conceptual list of faces to render
-    auto faces_to_render = faces_from(chunk_section);
+    auto quads_to_render = quads_from(chunk_section);
 
-    if (faces_to_render.empty()) {
+    if (quads_to_render.empty()) {
       TraceLog(LOG_INFO, std::format(
         "No mesh to render for:{}",
         to_string(chunk_section.origin)
@@ -136,7 +137,7 @@ std::optional<Mesh> MeshGenerator::from(ChunkSection &chunk_section) {
     } else {
       TraceLog(LOG_INFO, std::format(
         "faces_to_render:{} for {}",
-        faces_to_render.size(),
+        quads_to_render.size(),
         to_string(chunk_section.origin)
       ).c_str());
     }
@@ -153,39 +154,36 @@ std::optional<Mesh> MeshGenerator::from(ChunkSection &chunk_section) {
 
     Mesh mesh{};
 
-    mesh.triangleCount = faces_to_render.size() * 2;
-    mesh.vertexCount = faces_to_render.size() * 4;
+    mesh.triangleCount = quads_to_render.size() * 2;
+    mesh.vertexCount = quads_to_render.size() * 4;
 
     mesh.vertices = (float *)MemAlloc(mesh.vertexCount*3*sizeof(float));    // 3 vertices, 3 coordinates each (x, y, z)
     mesh.texcoords = (float *)MemAlloc(mesh.vertexCount*2*sizeof(float));   // 3 vertices, 2 coordinates each (x, y)
     mesh.normals = (float *)MemAlloc(mesh.vertexCount*3*sizeof(float));     // 3 vertices, 3 coordinates each (x, y, z)
-    mesh.indices = (unsigned short *)MemAlloc(faces_to_render.size()*6*sizeof(unsigned short)); // 6 indices per face
+    mesh.indices = (unsigned short *)MemAlloc(quads_to_render.size()*6*sizeof(unsigned short)); // 6 indices per face
     mesh.colors = (unsigned char *)MemAlloc(mesh.vertexCount * 4* sizeof(char));
 
-    for (auto && [block_type, direction, position] : faces_to_render) {
-      auto vertices = Face::vertices(direction);
-      auto normal   = Face::normal(direction);
-      auto color    = Block::color(block_type, direction);
-      auto all_tex_coords = texture_atlas.lookup_texture_uv(
-        block_type,
-        direction
+    for (Quad& quad : quads_to_render) {
+      auto tex_coords = texture_atlas.lookup_texture_uv(
+        quad.block_type,
+        quad.direction
       );
-      for (int i = 0; i < Face::n_vertices; i ++) {
-        mesh.vertices[vertex_index]          = vertices[i].x + position.x;
-        mesh.vertices[vertex_index + 1]      = vertices[i].y + position.y;
-        mesh.vertices[vertex_index + 2]      = vertices[i].z + position.z;
+      for (int i = 0; i < Quad::n_vertices; i ++) {
+        mesh.vertices[vertex_index]          = quad.vertices[i].x;
+        mesh.vertices[vertex_index + 1]      = quad.vertices[i].y;
+        mesh.vertices[vertex_index + 2]      = quad.vertices[i].z;
 
-        mesh.normals[normal_index]           = normal.x;
-        mesh.normals[normal_index + 1]       = normal.y;
-        mesh.normals[normal_index + 2]       = normal.z;
+        mesh.normals[normal_index]           = quad.normal.x;
+        mesh.normals[normal_index + 1]       = quad.normal.y;
+        mesh.normals[normal_index + 2]       = quad.normal.z;
 
-        mesh.texcoords[tex_coords_index]     = all_tex_coords[i].x;
-        mesh.texcoords[tex_coords_index + 1] = all_tex_coords[i].y;
+        mesh.texcoords[tex_coords_index]     = tex_coords[i].x;
+        mesh.texcoords[tex_coords_index + 1] = tex_coords[i].y;
 
-        mesh.colors[colours_index    ]       = color.r;
-        mesh.colors[colours_index + 1]       = color.g;
-        mesh.colors[colours_index + 2]       = color.b;
-        mesh.colors[colours_index + 3]       = color.a;
+        mesh.colors[colours_index    ]       = quad.color.r;
+        mesh.colors[colours_index + 1]       = quad.color.g;
+        mesh.colors[colours_index + 2]       = quad.color.b;
+        mesh.colors[colours_index + 3]       = quad.color.a;
 
         normal_index     += 3;
         vertex_index     += 3;

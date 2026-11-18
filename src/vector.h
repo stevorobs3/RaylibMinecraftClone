@@ -14,6 +14,7 @@ struct Vector3Int {
     return Vector3Int(x + other.x, y + other.y, z + other.z);
   }
 
+
   bool operator==(Vector3Int other) const {
   	return other.x == x && other.y == y && other.z == z;
   }

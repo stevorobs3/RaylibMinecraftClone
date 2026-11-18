@@ -7,6 +7,7 @@
 #include "raymath.h"
 
 #include "block.h"
+#include "quad.h"
 
 struct World;
 
@@ -66,9 +67,9 @@ struct ChunkSection {
       position.z >= 0 && position.z < ChunkSection::n;
   }
 
-  BlockType internal_neighbour(Face::Direction dir, Vector3Int local_position) const {
+  BlockType internal_neighbour(Direction dir, Vector3Int local_position) const {
     assert(contains(local_position));
-    auto neighbour_pos = local_position + Face::normal(dir);
+    auto neighbour_pos = local_position + Quad::lookup_normal(dir);
     assert(contains(neighbour_pos));
     return const_blocks()[neighbour_pos.x,neighbour_pos.y,neighbour_pos.z];
   }

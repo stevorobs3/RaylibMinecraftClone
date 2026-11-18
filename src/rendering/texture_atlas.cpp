@@ -1,11 +1,15 @@
-#pragma once
+
+#include <string>
 
 #include "texture_atlas.h"
+#include "quad.h"
+#include "raymath.h"
+
 
 
 std::array<Vector2, 4> TextureAtlas::lookup_texture_uv(
     BlockType block_type,
-    Face::Direction dir
+    Direction dir
 ) {
   int index = textures_lookup[static_cast<int>(block_type)]
     [static_cast<int>(dir)];

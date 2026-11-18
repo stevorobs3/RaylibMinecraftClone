@@ -1,16 +1,14 @@
 #pragma once
 #include <filesystem>
-#include <string>
 #include <array>
 #include <cassert>
 #include <cmath>
 
 #include "raylib.h"
-#include "raymath.h"
 #include "rlgl.h"
 #include "external/glad.h"
 
-#include "face.h"
+#include "quad.h"
 #include "world/block.h"
 
 namespace fs = std::filesystem;
@@ -48,7 +46,7 @@ struct TextureAtlas {
 
   std::array<Vector2, 4> lookup_texture_uv(
     BlockType block_type,
-    Face::Direction dir
+    Direction dir
   );
 
   bool load();
