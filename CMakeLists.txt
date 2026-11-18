@@ -62,18 +62,25 @@ target_include_directories(minecraft_clone PRIVATE
     "${raylib_SOURCE_DIR}/src"
 )
 
-# Copy assets beside the executable, rather than during a library build.
+# Faithful textures are static development assets. Copy them once per build
+# directory; the stamp prevents repeating the copy after every relink.
+# Delete assets.stamp to force a refresh after changing source textures.
 set(BLOCK_TEXTURE_DIR
     "${CMAKE_CURRENT_SOURCE_DIR}/assets/faithful/assets/minecraft/textures/block"
 )
 if(EXISTS "${BLOCK_TEXTURE_DIR}")
-    add_custom_command(TARGET minecraft_clone POST_BUILD
+    set(ASSET_STAMP "${CMAKE_CURRENT_BINARY_DIR}/assets.stamp")
+    add_custom_command(
+        OUTPUT "${ASSET_STAMP}"
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${BLOCK_TEXTURE_DIR}"
-            "$<TARGET_FILE_DIR:minecraft_clone>/assets"
-        COMMENT "Copying game assets"
+            "${CMAKE_CURRENT_BINARY_DIR}/assets"
+        COMMAND ${CMAKE_COMMAND} -E touch "${ASSET_STAMP}"
+        COMMENT "Copying game assets (first build only)"
         VERBATIM
     )
+    add_custom_target(copy_assets DEPENDS "${ASSET_STAMP}")
+    add_dependencies(minecraft_clone copy_assets)
 endif()
 
 # Tests link the same core implementation as the application.
