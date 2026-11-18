@@ -127,8 +127,7 @@ void PlayerController::update(
     world_physics.move_player(
       feet, velocity, size,
       {horizontal_velocity.x * fixed_dt, dy, horizontal_velocity.z * fixed_dt},
-      blocks_overlapping_with_player(),
-      bounds()
+      blocks_overlapping_with_player()
     );
 
     jump_buffer = std::max(0.0f, jump_buffer - fixed_dt);
