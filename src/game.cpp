@@ -12,7 +12,7 @@
 Game::Game()
   : player_initial_position{
     World::width / 2.0f,
-    1.0f,
+    7.0f,
     World::width / 2.0f
   },
   player_size{0.6f, 1.8f, 0.6f},
@@ -22,6 +22,7 @@ Game::Game()
       PlayerController::eye_height,
       0
     ),
+    .target = player_initial_position + Vector3(1.0f, PlayerController::eye_height, 0.0f),
     .up = {0.0f, 1.0f, 0.0f},
     .fovy = 75.0f,
     .projection = CAMERA_PERSPECTIVE
