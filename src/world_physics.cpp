@@ -5,10 +5,21 @@
 #include <cmath>
 // todo: what asserts are needed here?
 
+namespace {
+
+BoundingBox player_bounds(Vector3 feet, Vector3 size) {
+  return {
+    .min = {feet.x - size.x * 0.5f, feet.y, feet.z - size.z * 0.5f},
+    .max = {feet.x + size.x * 0.5f, feet.y + size.y, feet.z + size.z * 0.5f}
+  };
+}
+
 bool overlap(const BoundingBox a, const BoundingBox b) {
   return a.min.x < b.max.x && a.max.x > b.min.x &&
          a.min.y < b.max.y && a.max.y > b.min.y &&
          a.min.z < b.max.z && a.max.z > b.min.z;
+}
+
 }
 
 bool WorldPhysics::player_overlaps_block(
@@ -70,15 +81,12 @@ void WorldPhysics::move_player(
   Vector3& velocity,
   Vector3 size,
   Vector3 displacement,
-  const std::vector<Vector3Int> &blocks_overlapping_with_player,
-  const BoundingBox player_bounds
+  const std::vector<Vector3Int> &blocks_overlapping_with_player
 ) const {
   // Restore the original axis-separated AABB collision approach:
   // horizontal motion first, then vertical falling / jumping.
   // Each axis is resolved against the current world before the next.
-  BoundingBox world_bb = world.bounds;
-  Vector3 before_feet = feet;
-  auto resolve_axis = [&](char axis, float delta) {
+   auto resolve_axis = [&](char axis, float delta) {
     if (delta == 0.0f) {
       return;
     }
@@ -90,7 +98,7 @@ void WorldPhysics::move_player(
     for (Vector3Int block_pos : blocks_overlapping_with_player) {
       BlockType block_type = world.get(block_pos);
       if (block_type == BlockType::AIR ||
-          !overlap(player_bounds, Block::bounds(block_pos, block_type))) {
+          !overlap(player_bounds(feet, size), Block::bounds(block_pos, block_type))) {
         continue;
       }
 
@@ -113,41 +121,10 @@ void WorldPhysics::move_player(
       }
     }
 
-    // todo: how to stop the player from falling through the floor?
-    // if (axis == 'x') {
-      // feet.x = delta > 0.0f
-      //   ? std::min(feet.x, (world_bb.max.x - size.x * 0.5f))
-      //   : std::max(feet.x, (world_bb.min.x + size.x * 0.5f));
-    // }
-    // if (axis == 'y') {
-    //   // feet.y = delta > 0.0f
-    //   //   ? feet.y //std::min(feet.y, (world_bb.max.y - size.y))
-    //   //   : std::max(feet.y, world_bb.min.y);
-    //   float new_feet_y = std::max(feet.y, world_bb.min.y);
-    //   if (new_feet_y != feet.y) {
-    //     TraceLog(LOG_INFO, "we hit the floor!");
-    //     velocity.y = 0.0f;
-    //   }
-    //   feet.y = new_feet_y;
-    // }
-    // else {
-      // feet.z = delta > 0.0f
-      //   ? std::min(feet.z, (world_bb.max.z - size.z * 0.5f))
-      //   : std::max(feet.z, (world_bb.min.z + size.z * 0.5f));
-    // }
+
   };
 
   resolve_axis('x', displacement.x);
   resolve_axis('z', displacement.z);
   resolve_axis('y', displacement.y);
-  // if (std::abs(before_feet.y - feet.y) > 0.0f) {
-  //   TraceLog(LOG_INFO, std::format(
-  //     "\nfeet:{}\ndelta:{}\ndisplacement:{}\nsize:{}\nvelocity:{}",
-  //     to_string(feet),
-  //     to_string(before_feet - feet),
-  //     to_string(displacement),
-  //     to_string(size),
-  //     to_string(velocity)
-  //   ).c_str());
-  // }
 }
