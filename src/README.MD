@@ -24,7 +24,7 @@ hosted CI is configured.
 
 - [x] Use signed `ChunkCoord{x,z}` keys and coordinate-keyed chunk lookup.
 - [x] Keep exactly 24 fixed 16³ `ChunkSection` objects in each
-      non-copyable, non-movable `Chunk` using `std::array` .
+      non-copyable, non-movable `Chunk` using `std::array`.
 - [x] Centre the initial 2×2 chunk grid around the origin (chunks -1 and 0
       on each axis).
 - [x] Use floor division/modulo for negative world coordinates.
@@ -121,7 +121,7 @@ Mesh vertices have 16-bit indices; the generator splits at 65,536 vertices
 offset quad and are currently a simple baseline, not a fully transparent
 rendering pipeline. Unloaded neighbours are treated as air for meshing.
 
-Memory allocation in standard C++ containers can throw `std::bad_alloc` .
+Memory allocation in standard C++ containers can throw `std::bad_alloc`.
 The game catches ordinary `std::exception` at its outer boundary, after
 which RAII releases owned resources. Some raylib C allocation or GL error
 paths are not guaranteed to fail gracefully; investigate separately rather
@@ -162,5 +162,5 @@ overlay transparency; and repeated mesh/model rebuilds.
 
 **Development asset note:** the `assets/` directory is gitignored. To run
 the game, provide the Faithful block PNGs listed in
-`src/rendering/texture_atlas.h` , including `grass_block_side_overlay.png`
+`src/rendering/texture_atlas.h`, including `grass_block_side_overlay.png`
 .
