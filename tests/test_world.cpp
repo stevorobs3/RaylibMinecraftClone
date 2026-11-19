@@ -87,3 +87,15 @@ TEST_CASE("Reset restores terrain and gives recreated chunks new generations") {
   CHECK(world.get(0,7,0)==BlockType::AIR);
   CHECK(world.find_chunk({0,0})->generation!=old_generation);
 }
+
+TEST_CASE("Unloading a chunk invalidates its neighbours and removes block visibility") {
+  World world;
+  for(auto& [coord,chunk]:world.chunks)
+    for(auto& section:chunk.chunk_sections) section.acknowledge(section.revision);
+  REQUIRE(world.unload_chunk({0,0}));
+  CHECK_FALSE(world.is_loaded({0,0}));
+  CHECK_FALSE(world.try_get({0,7,0}).has_value());
+  CHECK(world.find_section({{-1,0},0})->dirty);
+  CHECK(world.find_section({{0,-1},0})->dirty);
+  CHECK_FALSE(world.unload_chunk({0,0}));
+}

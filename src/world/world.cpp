@@ -50,6 +50,17 @@ Chunk& World::get_or_create_chunk(ChunkCoord coord) {
   }
   return it->second;
 }
+bool World::unload_chunk(ChunkCoord coord) {
+  if(chunks.erase(coord)==0) return false;
+  // Removing a chunk exposes outer faces on any existing neighbours.
+  for(int section=0;section<Chunk::n_sections;++section) {
+    mark_dirty({{coord.x-1,coord.z},section});
+    mark_dirty({{coord.x+1,coord.z},section});
+    mark_dirty({{coord.x,coord.z-1},section});
+    mark_dirty({{coord.x,coord.z+1},section});
+  }
+  return true;
+}
 ChunkSection* World::find_section(SectionCoord coord) noexcept {
   Chunk* chunk=find_chunk(coord.chunk);
   if (!chunk || coord.y<0 || coord.y>=Chunk::n_sections) return nullptr;

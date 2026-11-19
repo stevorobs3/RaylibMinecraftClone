@@ -95,11 +95,18 @@ if(BUILD_TESTING)
     add_executable(minecraft_tests
         tests/test_main.cpp
         tests/test_vector.cpp
-        tests/test_world_physics.cpp
+        tests/test_coords.cpp
         tests/test_world.cpp
         tests/test_chunk_section.cpp
+        tests/test_world_physics.cpp
+        tests/test_player_actions.cpp
+        tests/test_player_controller.cpp
         tests/test_quad.cpp
+        tests/test_face_appearance.cpp
         tests/test_mesh_generator.cpp
+        tests/test_chunk_snapshot.cpp
+        tests/test_ownership.cpp
+        tests/test_fixed_step.cpp
     )
     target_include_directories(minecraft_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/third_party"

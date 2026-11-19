@@ -1,11 +1,12 @@
 #include "doctest.h"
 #include "world/world.h"
 #include <type_traits>
+#include <tuple>
 static_assert(!std::is_copy_constructible_v<Chunk>);
 static_assert(!std::is_move_constructible_v<Chunk>);
 static_assert(!std::is_copy_constructible_v<ChunkSection>);
 static_assert(!std::is_move_constructible_v<ChunkSection>);
-static_assert(std::tuple_size_v<decltype(Chunk::chunk_sections)>==24);
+static_assert(std::tuple_size_v<decltype(Chunk::chunk_sections)> == 24);
 
 TEST_CASE("Fixed 24 section array has consistent negative-coordinate origins") {
   World world;

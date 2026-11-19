@@ -31,6 +31,7 @@ struct World {
   Chunk* find_chunk(ChunkCoord coord) noexcept;
   const Chunk* find_chunk(ChunkCoord coord) const noexcept;
   Chunk& get_or_create_chunk(ChunkCoord coord); // may allocate
+  bool unload_chunk(ChunkCoord coord); // no GPU resources owned by World
   ChunkSection* find_section(SectionCoord coord) noexcept;
   const ChunkSection* find_section(SectionCoord coord) const noexcept;
 
