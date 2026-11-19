@@ -11,6 +11,7 @@
 struct MeshBuildResult {
   SectionCoord section{};
   std::uint64_t revision=0;
+  std::uint64_t generation=0;
   std::vector<MeshData> geometry;
 };
 struct WorldMesh {

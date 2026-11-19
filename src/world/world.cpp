@@ -37,7 +37,9 @@ const Chunk* World::find_chunk(ChunkCoord coord) const noexcept {
   return it==chunks.end()?nullptr:&it->second;
 }
 Chunk& World::get_or_create_chunk(ChunkCoord coord) {
-  auto [it,inserted]=chunks.try_emplace(coord,coord);
+  auto it_existing=chunks.find(coord);
+  if(it_existing!=chunks.end()) return it_existing->second;
+  auto [it,inserted]=chunks.try_emplace(coord,coord,++next_generation_);
   if (inserted) {
     for (int section=0;section<Chunk::n_sections;++section) {
       mark_dirty({{coord.x-1,coord.z},section});

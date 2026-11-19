@@ -1,6 +1,7 @@
 #include "mesh_generator.h"
 #include <cstring>
 #include <new>
+#include <type_traits>
 #include "quad.h"
 #include "face_appearance.h"
 

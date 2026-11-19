@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <cstdint>
 #include <utility>
 #include <raylib.h>
 #include "chunk_section.h"
@@ -7,12 +8,13 @@
 struct Chunk {
   static constexpr int n_sections = 24;
   ChunkCoord coord{};
+  std::uint64_t generation=0;
   Vector3Int origin{};
   BoundingBox bounds{};
   std::array<ChunkSection,n_sections> chunk_sections;
 
-  explicit Chunk(ChunkCoord coord)
-    : coord(coord),
+  explicit Chunk(ChunkCoord coord,std::uint64_t generation)
+    : coord(coord), generation(generation),
       origin{coord.x*ChunkSection::n,0,coord.z*ChunkSection::n},
       bounds{
         Vector3{static_cast<float>(origin.x),0,static_cast<float>(origin.z)},

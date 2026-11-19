@@ -1,5 +1,6 @@
 #pragma once
 #include <cassert>
+#include <cstdint>
 #include <cmath>
 #include <optional>
 #include <unordered_map>
@@ -61,4 +62,6 @@ struct World {
   std::vector<Vector3Int> positions_within_range(Vector3 origin,int range) const;
 
   std::unordered_map<ChunkCoord,Chunk,ChunkCoordHash> chunks;
+private:
+  std::uint64_t next_generation_=0;
 };

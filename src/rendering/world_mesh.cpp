@@ -4,11 +4,14 @@ std::optional<MeshBuildResult> WorldMesh::prepare_cpu(SectionCoord coord) const 
   const ChunkSection* section=world_.find_section(coord);
   if(!section) return std::nullopt;
   auto snapshot=make_snapshot(world_,*section);
-  return MeshBuildResult{coord,section->revision,generator_.build(snapshot)};
+  const Chunk* chunk=world_.find_chunk(coord.chunk);
+  return MeshBuildResult{coord,section->revision,chunk->generation,generator_.build(snapshot)};
 }
 bool WorldMesh::submit_gpu(MeshBuildResult&& result) {
   ChunkSection* section=world_.find_section(result.section);
-  if(!section || section->revision!=result.revision) return false;
+  const Chunk* chunk=world_.find_chunk(result.section.chunk);
+  if(!section || !chunk || chunk->generation!=result.generation ||
+     section->revision!=result.revision) return false;
   if(result.geometry.empty()) {
     chunk_section_meshes.erase(result.section);
     section->acknowledge(result.revision);
