@@ -1,21 +1,40 @@
 #include "doctest.h"
 #include "world/world.h"
+#include <type_traits>
+static_assert(!std::is_copy_constructible_v<Chunk>);
+static_assert(!std::is_move_constructible_v<Chunk>);
+static_assert(!std::is_copy_constructible_v<ChunkSection>);
+static_assert(!std::is_move_constructible_v<ChunkSection>);
+static_assert(std::tuple_size_v<decltype(Chunk::chunk_sections)>==24);
 
-TEST_CASE("Chunk section fill returns whether its contents changed") {
+TEST_CASE("Fixed 24 section array has consistent negative-coordinate origins") {
   World world;
-  auto& section = world.get_chunk_section(0, 3);
-  CHECK_FALSE(section.fill(BlockType::AIR));
-  CHECK(section.fill(BlockType::STONE));
-  CHECK((section.const_blocks()[3,4,5] == BlockType::STONE));
-  CHECK_FALSE(section.fill(BlockType::STONE));
-  CHECK(section.fill(BlockType::AIR));
+  const Chunk* chunk=world.find_chunk({-1,0});
+  REQUIRE(chunk!=nullptr);
+  CHECK(chunk->chunk_sections.size()==24);
+  CHECK(chunk->chunk_sections[0].origin==Vector3Int(-16,0,0));
+  CHECK(chunk->chunk_sections[23].origin==Vector3Int(-16,368,0));
+  CHECK(chunk->bounds.max.y==384.0f);
 }
-
-TEST_CASE("Chunk section local coordinate bounds") {
+TEST_CASE("Local fill, revision, acknowledgement and bounds") {
   World world;
-  const auto& section = world.get_chunk_section(0,0);
-  CHECK(section.contains({0,0,0}));
-  CHECK(section.contains({15,15,15}));
-  CHECK_FALSE(section.contains({16,0,0}));
-  CHECK_FALSE(section.contains({-1,0,0}));
+  auto* s=world.find_section({{0,0},23});
+  REQUIRE(s!=nullptr);
+  s->acknowledge(s->revision);
+  CHECK_FALSE(s->dirty);
+  CHECK_FALSE(s->fill(BlockType::AIR));
+  const auto version=s->revision;
+  CHECK(s->fill(BlockType::STONE));
+  CHECK(s->dirty);
+  CHECK(s->revision>version);
+  CHECK(s->get_local({3,4,5})==BlockType::STONE);
+  s->acknowledge(version);
+  CHECK(s->dirty);
+  s->acknowledge(s->revision);
+  CHECK_FALSE(s->dirty);
+  CHECK_FALSE(s->fill(BlockType::STONE));
+  CHECK(s->contains({0,0,0}));
+  CHECK(s->contains({15,15,15}));
+  CHECK_FALSE(s->contains({16,0,0}));
+  CHECK_FALSE(s->contains({-1,0,0}));
 }
