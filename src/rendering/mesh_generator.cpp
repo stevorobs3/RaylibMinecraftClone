@@ -67,7 +67,7 @@ std::vector<MeshData> MeshGenerator::build(const ChunkSnapshot& snapshot) const 
 }
 
 std::optional<Mesh> MeshGenerator::upload(const MeshData& data) {
-  if(data.vertex_count==0) return std::nullopt;
+  if(!data.valid()) return std::nullopt;
   Mesh mesh{};
   mesh.vertexCount=data.vertex_count;
   mesh.triangleCount=data.triangle_count;

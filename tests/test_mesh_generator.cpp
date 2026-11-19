@@ -24,6 +24,7 @@ TEST_CASE("Single stone and two adjacent stones emit correct exposed faces") {
   CHECK(one[0].vertex_count==24);
   CHECK(one[0].triangle_count==12);
   CHECK(one[0].indices.size()==36);
+  CHECK(one[0].valid());
   for(unsigned short index:one[0].indices)
     CHECK(index<one[0].vertex_count);
   world.set(9,56,8,BlockType::STONE);
@@ -73,4 +74,18 @@ TEST_CASE("Checkerboard with grass overlays splits across the 16-bit index limit
     vertices+=mesh.vertex_count;
   }
   CHECK(vertices==2048*10*4);
+}
+
+TEST_CASE("Malformed mesh buffers fail validation before GPU upload") {
+  MeshData bad;
+  CHECK_FALSE(bad.valid());
+  World world;
+  TextureAtlas atlas;
+  MeshGenerator generator(atlas);
+  world.set(8,56,8,BlockType::STONE);
+  auto data=generator.build(make_snapshot(world,*world.find_section({{0,0},3})));
+  REQUIRE(data.size()==1);
+  CHECK(data[0].valid());
+  data[0].vertices.pop_back();
+  CHECK_FALSE(data[0].valid());
 }
