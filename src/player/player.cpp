@@ -8,11 +8,12 @@ void Player::find_target(const World& world, const Camera3D& camera) {
     GetScreenWidth() / 2.0f,
     GetScreenHeight() / 2.0f
   };
-  const Ray ray = GetScreenToWorldRay(centre, camera);
-
+  find_target(world,GetScreenToWorldRay(centre,camera));
+}
+void Player::find_target(const World& world,const Ray& ray) {
   float nearest = 5.0f;
   target.reset();
-  for (Vector3Int grid_position : world.positions_within_range(camera.position, nearest)) {
+  for (Vector3Int grid_position : world.positions_within_range(ray.position, static_cast<int>(nearest))) {
     BlockType block_type = world.get(grid_position);
     if (block_type == BlockType::AIR) {
       continue;
