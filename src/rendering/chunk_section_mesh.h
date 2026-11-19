@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <cstdint>
 #include <utility>
 #include <raylib.h>
 #include "mesh_generator.h"
@@ -31,9 +32,12 @@ public:
   ChunkSectionMesh(ChunkSectionMesh&&) noexcept=default;
   ChunkSectionMesh& operator=(ChunkSectionMesh&&) noexcept=default;
   // All methods in this object access GPU resources: main thread only.
-  bool replace(const std::vector<MeshData>& data,Texture2D atlas_texture);
+  bool replace(const std::vector<MeshData>& data,Texture2D atlas_texture,
+               std::uint64_t generation);
+  std::uint64_t generation() const noexcept { return generation_; }
   const std::vector<OwnedModel>& models() const noexcept { return models_; }
-  void unload_gpu() noexcept { models_.clear(); }
+  void unload_gpu() noexcept { models_.clear(); generation_=0; }
 private:
   std::vector<OwnedModel> models_;
+  std::uint64_t generation_=0;
 };

@@ -1,6 +1,7 @@
 #include "chunk_section_mesh.h"
 
-bool ChunkSectionMesh::replace(const std::vector<MeshData>& data,Texture2D texture) {
+bool ChunkSectionMesh::replace(const std::vector<MeshData>& data,Texture2D texture,
+                               std::uint64_t generation) {
   std::vector<OwnedModel> replacement;
   replacement.reserve(data.size());
   for (const MeshData& part : data) {
@@ -29,5 +30,6 @@ bool ChunkSectionMesh::replace(const std::vector<MeshData>& data,Texture2D textu
     replacement.emplace_back(model);
   }
   models_.swap(replacement); // Old GPU objects released after successful replacement.
+  generation_=generation;
   return true;
 }

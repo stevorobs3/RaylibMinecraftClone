@@ -33,10 +33,11 @@ bool WorldMesh::submit_gpu(MeshBuildResult&& result) {
   if(it==chunk_section_meshes.end()) {
     // Build first; a failing allocation cannot leave a half-created map entry.
     ChunkSectionMesh replacement;
-    if(!replacement.replace(result.geometry,atlas_.texture())) return false;
+    if(!replacement.replace(result.geometry,atlas_.texture(),result.generation)) return false;
     chunk_section_meshes.try_emplace(result.section,std::move(replacement));
   } else {
-    if(!it->second.replace(result.geometry,atlas_.texture())) return false;
+    if(it->second.generation()!=result.generation) it->second.unload_gpu();
+    if(!it->second.replace(result.geometry,atlas_.texture(),result.generation)) return false;
   }
   section->acknowledge(result.revision);
   return true;
@@ -44,7 +45,9 @@ bool WorldMesh::submit_gpu(MeshBuildResult&& result) {
 void WorldMesh::rebuild_dirty_meshes() {
   // Purge GPU models for chunks that were unloaded.
   for(auto it=chunk_section_meshes.begin();it!=chunk_section_meshes.end();) {
-    if(!world_.find_section(it->first)) it=chunk_section_meshes.erase(it);
+    const Chunk* live=world_.find_chunk(it->first.chunk);
+    if(!live || live->generation!=it->second.generation())
+      it=chunk_section_meshes.erase(it);
     else ++it;
   }
   for(auto& [coord,chunk]:world_.chunks())
