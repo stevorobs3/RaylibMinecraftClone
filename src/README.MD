@@ -120,10 +120,16 @@ sampling at tile edges while preserving the image's RGBA values.
 The 64-pixel source size is explicit in `TextureAtlas::tile_pixels`;
 change that constant when migrating to a different texture resolution.
 
-Grass sides still use one quad with two UV channels. The fragment
-shader applies a binary alpha cutoff to choose either the tinted
-overlay or the base pixel. Atlas padding and the cutoff solve
-different problems; neither requires duplicate geometry.
+Grass sides still use one quad with two UV channels. For now the
+base uses `dirt.png`, not `grass_block_side.png`: the original side
+texture can contain baked-in green pixels that show through when
+the overlay is transparent, especially with mipmapping. The tinted
+overlay itself is unchanged. This is a reversible texture-selection
+workaround, not a modification to the source PNGs.
+
+The fragment shader uses a binary alpha cutoff to choose either
+the tinted overlay or the dirt base. Atlas padding and the cutoff
+solve different problems; neither requires duplicate geometry.
 
 ## Rendering and ownership contracts
 

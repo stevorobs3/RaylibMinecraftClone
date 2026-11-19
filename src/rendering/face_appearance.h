@@ -27,7 +27,10 @@ inline FaceAppearance face_appearance(BlockType block,
         return {{TextureId::GrassTop, grass}, {}};
       if (dir == Direction::DOWN)
         return {{TextureId::Dirt}, {}};
-      return {{TextureId::GrassSide},
+      // Use clean dirt under the grass mask. The original side
+      // texture includes precoloured green that can show through
+      // where the overlay's mipmapped alpha falls below cutoff.
+      return {{TextureId::Dirt},
               TextureLayer{TextureId::GrassSideOverlay, grass}};
     case BlockType::DIRT: return {{TextureId::Dirt}, {}};
     case BlockType::STONE: return {{TextureId::Stone}, {}};

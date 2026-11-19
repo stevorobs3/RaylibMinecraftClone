@@ -13,7 +13,8 @@ TEST_CASE("Texture layers are independent of block enum ordering") {
   for (auto dir:{Direction::EAST, Direction::WEST, Direction::NORTH,
     Direction::SOUTH}) {
     const auto face = face_appearance(BlockType::GRASS, dir);
-    CHECK(face.base.texture == TextureId::GrassSide);
+    // Base must never introduce the old green grass-side pixels.
+    CHECK(face.base.texture == TextureId::Dirt);
     REQUIRE(face.overlay.has_value());
     CHECK(face.overlay->texture == TextureId::GrassSideOverlay);
   }
