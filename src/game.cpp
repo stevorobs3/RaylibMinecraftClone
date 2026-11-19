@@ -46,7 +46,7 @@ void reset(
   world.initialise();
   controller.reset(player_initial_position);
   player.target.reset();
-  world_mesh.rebuild_dirty_meshes();
+  world_mesh.rebuild_all_meshes();
 }
 }
 
