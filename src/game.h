@@ -24,7 +24,6 @@ struct Game {
   Renderer renderer;
   FixedStepper fixed_stepper{};
 
-
   Game();
 
   int run();

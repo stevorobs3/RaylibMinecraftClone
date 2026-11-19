@@ -27,7 +27,7 @@ PlayerController::PlayerController(
     forward.x * forward.x + forward.y * forward.y + forward.z * forward.z
   );
   if (length > 0.0f) {
-    yaw = std::atan2(forward.z, forward.x);
+    yaw   = std::atan2(forward.z, forward.x);
     pitch = std::asin(std::clamp(forward.y / length, -1.0f, 1.0f));
   }
   grounded = world_physics.is_grounded(bounds());
@@ -35,7 +35,7 @@ PlayerController::PlayerController(
 }
 
 void PlayerController::sync_camera() {
-  const float cp = std::cos(pitch);
+  const float cp  = std::cos(pitch);
   camera.position = {feet.x, feet.y + eye_height, feet.z};
   camera.target = {
     feet.x + cp * std::cos(yaw),
@@ -46,7 +46,7 @@ void PlayerController::sync_camera() {
 
 void PlayerController::apply_look(Vector2 mouse_delta) {
   constexpr float sensitivity = 0.002f;
-  constexpr float limit = std::numbers::pi_v<float> / 2.0f - 0.01f;
+  constexpr float limit       = std::numbers::pi_v<float> / 2.0f - 0.01f;
 
   yaw += mouse_delta.x * sensitivity;
   pitch = std::clamp(pitch - mouse_delta.y * sensitivity, -limit, limit);
@@ -54,15 +54,16 @@ void PlayerController::apply_look(Vector2 mouse_delta) {
 }
 
 void PlayerController::reset(Vector3 initial_feet) {
-  feet = initial_feet;
-  velocity = {};
+  feet        = initial_feet;
+  velocity    = {};
   jump_buffer = 0.0f;
-  grounded = world_physics.is_grounded(bounds());
+  grounded    = world_physics.is_grounded(bounds());
   // Keep look direction through reset, as in the original game.
   sync_camera();
 }
 
-void PlayerController::fixed_update(const PlayerMovementInput& input,float dt) {
+void PlayerController::fixed_update(const PlayerMovementInput& input,
+  float dt) {
 
   // Horizontal movement is relative to yaw, not pitch.
   const float cy = std::cos(yaw);
@@ -73,7 +74,8 @@ void PlayerController::fixed_update(const PlayerMovementInput& input,float dt) {
     sy * input.movement.x + cy * input.movement.y
   };
   const float length = std::sqrt(
-    horizontal_velocity.x * horizontal_velocity.x + horizontal_velocity.z * horizontal_velocity.z
+    horizontal_velocity.x * horizontal_velocity.x + horizontal_velocity.z
+      * horizontal_velocity.z
   );
   if (length > 0.0f) {
     horizontal_velocity.x *= speed / length;
@@ -82,11 +84,11 @@ void PlayerController::fixed_update(const PlayerMovementInput& input,float dt) {
 
   {
     const bool supported = world_physics.is_grounded(bounds());
-    float vertical = velocity.y;
-    const bool can_jump = supported && vertical <= 0.1f;
+    float vertical       = velocity.y;
+    const bool can_jump  = supported && vertical <= 0.1f;
 
     if (jump_buffer > 0.0f && can_jump) {
-      vertical = std::sqrt(2.0f * -gravity * jump_height);
+      vertical    = std::sqrt(2.0f * -gravity * jump_height);
       jump_buffer = 0.0f;
     } else if (supported && vertical < 0.0f) {
       vertical = 0.0f;
@@ -124,19 +126,20 @@ BoundingBox PlayerController::bounds() const {
   };
 }
 
-
-std::vector<Vector3Int> PlayerController::blocks_overlapping_with_player() const {
+std::vector<Vector3Int> PlayerController::blocks_overlapping_with_player()
+  const {
   const BoundingBox bb = bounds();
   std::vector<Vector3Int> blocks;
   const int min_x = static_cast<int>(std::floor(bb.min.x));
   const int min_y = std::max(0, static_cast<int>(std::floor(bb.min.y)));
   const int min_z = static_cast<int>(std::floor(bb.min.z));
   const int max_x = static_cast<int>(std::ceil(bb.max.x));
-  const int max_y = std::min(World::height, static_cast<int>(std::ceil(bb.max.y)));
+  const int max_y = std::min(World::height,
+    static_cast<int>(std::ceil(bb.max.y)));
   const int max_z = static_cast<int>(std::ceil(bb.max.z));
-  for (int x = min_x; x < max_x; ++x)
-    for (int y = min_y; y < max_y; ++y)
-      for (int z = min_z; z < max_z; ++z)
+  for (int x = min_x; x < max_x; x++)
+    for (int y = min_y; y < max_y; y++)
+      for (int z = min_z; z < max_z; z++)
         blocks.push_back({x, y, z});
   return blocks;
 }

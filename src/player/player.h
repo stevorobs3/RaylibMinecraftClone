@@ -13,8 +13,9 @@ struct BlockHit {
 
 struct Player {
   std::optional<BlockHit> target;
-  void find_target(const World& world,const Camera3D& camera);
-  void find_target(const World& world,const Ray& ray); // deterministic, headless
-  void manipulate_blocks(World& world,const WorldPhysics& physics,
-                         BoundingBox player_bounds,BlockAction action);
+  void find_target(const World& world, const Camera3D& camera);
+  // deterministic, headless
+  void find_target(const World& world, const Ray& ray);
+  void manipulate_blocks(World& world, const WorldPhysics& physics,
+                         BoundingBox player_bounds, BlockAction action);
 };
