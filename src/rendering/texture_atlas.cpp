@@ -50,11 +50,11 @@ std::optional<ImageMips> TextureAtlas::stitch_images(const AllImageMips& all) {
     if(!output[level].valid()) return std::nullopt;
     for(int i=0;i<static_cast<int>(file_names.size());++i) {
       const Image& source=all[i][level].image;
-      ImageDraw(&output[level].image,source,
-        Rectangle{0,0,static_cast<float>(source.width),static_cast<float>(source.height)},
-        Rectangle{static_cast<float>(i%grid_size*source.width),
-                  static_cast<float>(i/grid_size*source.height),
-                  static_cast<float>(source.width),static_cast<float>(source.height)},
+      ImageDrawImage(
+        &output[level].image,
+        source,
+        i % grid_size * source.width,
+        i / grid_size * source.height,
         WHITE);
     }
   }
@@ -70,10 +70,10 @@ Texture2D TextureAtlas::to_texture(const ImageMips& mips) noexcept {
     glTexImage2D(GL_TEXTURE_2D,level,GL_RGBA8,image.width,image.height,0,
                  GL_RGBA,GL_UNSIGNED_BYTE,image.data);
   }
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_BASE_LEVEL,0);
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAX_LEVEL,MIP_LEVELS-1);
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST_MIPMAP_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL,0);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL,MIP_LEVELS-1);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
   glBindTexture(GL_TEXTURE_2D,0);
   if(glGetError()!=GL_NO_ERROR) {
     glDeleteTextures(1,&id);
@@ -90,7 +90,9 @@ bool TextureAtlas::load() {
     if(!all[i][0].valid()) return false;
   }
   auto stitched=stitch_images(all);
-  if(!stitched) return false;
+  if(!stitched)
+    return false;
+
   const Texture2D replacement=to_texture(*stitched);
   if(replacement.id==0) return false;
   unload();

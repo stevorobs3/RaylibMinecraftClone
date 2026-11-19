@@ -5,11 +5,11 @@ bool ChunkSectionMesh::replace(const std::vector<MeshData>& data,Texture2D textu
   std::vector<OwnedModel> replacement;
   replacement.reserve(data.size());
   for (const MeshData& part : data) {
-    auto mesh=MeshGenerator::upload(part);
+    auto mesh = MeshGenerator::upload(part);
     if(!mesh) return false;
     // LoadModelFromMesh transfers ownership of the mesh buffers.
     Model model=LoadModelFromMesh(*mesh);
-    if(!model.meshes || !model.materials || !model.meshMaterial ||
+    if (!model.meshes || !model.materials || !model.meshMaterial ||
        !model.materials[0].maps) {
       // Avoid UnloadModel on a partially allocated Model (it assumes
       // its materials array is usable whenever materialCount > 0).

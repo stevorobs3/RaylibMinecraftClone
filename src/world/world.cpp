@@ -5,7 +5,7 @@ World::World() { initialise(); }
 void World::initialise() {
   chunks_.clear();
   constexpr int start = -initial_grid_size/2;
-  for (int z=0;z<initial_grid_size;++z)
+  for (int z = 0;z<initial_grid_size;++z)
     for (int x=0;x<initial_grid_size;++x)
       get_or_create_chunk({start+x,start+z});
 

@@ -2,7 +2,6 @@
 #include <optional>
 #include <vector>
 #include <raylib.h>
-#include "world/chunk_section.h"
 #include "chunk_snapshot.h"
 #include "texture_atlas.h"
 
