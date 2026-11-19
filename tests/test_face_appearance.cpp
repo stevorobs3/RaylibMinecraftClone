@@ -22,20 +22,44 @@ TEST_CASE("Texture layers are independent of block enum ordering") {
 }
 
 TEST_CASE(
-  "Texture UV coordinates are normalised without an OpenGL context"
+  "Padded atlas UVs exclude gutters and neighbouring cells"
 ) {
   const TextureAtlas atlas;
-  auto uv = atlas.lookup_texture_uv(TextureId::Dirt);
-  CHECK(uv[0].x == doctest::Approx(0));
-  CHECK(uv[0].y == doctest::Approx(0));
-  CHECK(uv[3].x == doctest::Approx(1.0/3.0));
-  CHECK(uv[3].y == doctest::Approx(1.0/3.0));
-  auto overlay = atlas.lookup_texture_uv(TextureId::GrassSideOverlay);
-  CHECK(overlay[0].x == doctest::Approx(2.0/3.0));
-  CHECK(overlay[0].y == doctest::Approx(1.0/3.0));
-  for (auto p:overlay) {
-    CHECK(p.x >= 0); CHECK(p.x <= 1);
-    CHECK(p.y >= 0); CHECK(p.y <= 1);
+  constexpr int tile = TextureAtlas::tile_pixels;
+  constexpr int border = TextureAtlas::border_pixels;
+  constexpr int cell = tile + 2 * border;
+  constexpr int width = TextureAtlas::mip_atlas_pixels(0);
+
+  auto dirt = atlas.lookup_texture_uv(TextureId::Dirt);
+  CHECK(dirt[0].x ==
+        doctest::Approx(static_cast<float>(border) / width));
+  CHECK(dirt[0].y ==
+        doctest::Approx(static_cast<float>(border) / width));
+  CHECK(dirt[3].x ==
+        doctest::Approx(
+          static_cast<float>(border + tile) / width
+        ));
+
+  auto overlay = atlas.lookup_texture_uv(
+    TextureId::GrassSideOverlay
+  );
+  CHECK(overlay[0].x ==
+        doctest::Approx(
+          static_cast<float>(2 * cell + border) / width
+        ));
+  CHECK(overlay[0].y ==
+        doctest::Approx(
+          static_cast<float>(cell + border) / width
+        ));
+  CHECK(overlay[3].x < 1.0f);
+  CHECK(overlay[3].y < 1.0f);
+
+  for (int level = 0; level < MIP_LEVELS; level++) {
+    CHECK(TextureAtlas::mip_border_pixels(level) >= 1);
+    if (level > 0) {
+      CHECK(TextureAtlas::mip_atlas_pixels(level) * 2 ==
+            TextureAtlas::mip_atlas_pixels(level - 1));
+    }
   }
 }
 

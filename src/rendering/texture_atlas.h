@@ -67,6 +67,25 @@ struct TextureAtlas {
 
   static constexpr int grid_size = 3;
 
+  // Faithful 64 source tiles. A 16px gutter shrinks to
+  // one pixel at the smallest (level 4) mipmap.
+  static constexpr int tile_pixels = 64;
+  static constexpr int border_pixels = 1 << (MIP_LEVELS - 1);
+
+  static constexpr int mip_tile_pixels(int level) noexcept {
+    return tile_pixels >> level;
+  }
+
+  static constexpr int mip_border_pixels(int level) noexcept {
+    return border_pixels >> level;
+  }
+
+  static constexpr int mip_atlas_pixels(int level) noexcept {
+    return grid_size * (
+      mip_tile_pixels(level) + 2 * mip_border_pixels(level)
+    );
+  }
+
   using AllImageMips = std::array<ImageMips, file_names.size()>;
 
   TextureAtlas() noexcept = default;
