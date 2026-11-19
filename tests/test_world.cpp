@@ -34,8 +34,11 @@ TEST_CASE("World edits are explicit and can be checked without exceptions") {
 
 TEST_CASE("Boundary edits invalidate both adjacent chunks and vertical sections") {
   World world;
-  for(auto& [coord,chunk]:world.chunks())
-    for(auto& s:chunk.chunk_sections) s.acknowledge(s.revision);
+  for(const auto& [coord,chunk]:world.chunks())
+    for(const auto& s:chunk.chunk_sections) {
+      auto* mutable_section=world.find_section(s.coord);
+      mutable_section->acknowledge(mutable_section->revision);
+    }
 
   const SectionCoord self{{-1,-1},0};
   const SectionCoord east{{0,-1},0};

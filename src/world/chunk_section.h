@@ -61,6 +61,7 @@ private:
     if (changed) mark_dirty();
     return changed;
   }
+public:
   void mark_dirty() noexcept { dirty = true; ++revision; }
   void acknowledge(std::uint64_t version) noexcept {
     if (revision == version) dirty = false;
@@ -68,5 +69,6 @@ private:
   bool dirty = true;
   std::uint64_t revision = 1;
 
+private:
   std::array<BlockType,blockCount> storage{};
 };
