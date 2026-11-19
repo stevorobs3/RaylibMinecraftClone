@@ -17,7 +17,7 @@ static_assert(!std::is_copy_constructible_v<ChunkSectionMesh>);
 static_assert(std::is_nothrow_move_constructible_v<ChunkSectionMesh>);
 
 TEST_CASE("Moving an owned image leaves exactly one owner") {
-  OwnedImage owner(GenImageColor(4,4,WHITE));
+  OwnedImage owner(GenImageColor(4, 4, WHITE));
   REQUIRE(owner.valid());
   OwnedImage replacement(std::move(owner));
   CHECK_FALSE(owner.valid());
