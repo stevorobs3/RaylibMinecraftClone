@@ -63,6 +63,33 @@ target_link_libraries(minecraft_core PUBLIC
 add_executable(minecraft_clone src/main.cpp)
 target_link_libraries(minecraft_clone PRIVATE minecraft_core)
 
+# Shader source is tracked by CMake and copied beside the game executable.
+set(SHADER_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders")
+set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+
+add_custom_command(
+    OUTPUT
+        "${SHADER_OUTPUT_DIR}/block.vs"
+        "${SHADER_OUTPUT_DIR}/block.fs"
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "${SHADER_OUTPUT_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SHADER_SOURCE_DIR}/block.vs"
+        "${SHADER_OUTPUT_DIR}/block.vs"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SHADER_SOURCE_DIR}/block.fs"
+        "${SHADER_OUTPUT_DIR}/block.fs"
+    DEPENDS
+        "${SHADER_SOURCE_DIR}/block.vs"
+        "${SHADER_SOURCE_DIR}/block.fs"
+    VERBATIM
+)
+add_custom_target(copy_shaders DEPENDS
+    "${SHADER_OUTPUT_DIR}/block.vs"
+    "${SHADER_OUTPUT_DIR}/block.fs"
+)
+add_dependencies(minecraft_clone copy_shaders)
+
 # Some application headers use raylib 6.2's bundled GLAD declarations.
 # This is an internal raylib header, so keep the version pinned above.
 target_include_directories(minecraft_clone PRIVATE
