@@ -34,6 +34,7 @@ void WorldMesh::rebuild_all_meshes() {
   for (ChunkSectionMesh & c: chunk_section_meshes) {
     c.rebuild_mesh();
   }
+  world.dirty_chunk_sections.clear();
 }
 
 void WorldMesh::unload() {

@@ -55,7 +55,7 @@ std::vector<Quad> quads_from(
         };
         if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
         for (Direction dir : Quad::directions) {
-          auto neighbour_pos = block_position + Quad::lookup_normal(dir);
+          auto neighbour_pos = block_position + Vector3Int{static_cast<int>(Quad::lookup_normal(dir).x), static_cast<int>(Quad::lookup_normal(dir).y), static_cast<int>(Quad::lookup_normal(dir).z)};
           // todo: remove this once world is infinitely generated
           if (!chunk_section.world.contains(neighbour_pos) || chunk_section.world.get(neighbour_pos) == BlockType::AIR) {
             quads.push_back(Quad{
@@ -81,7 +81,7 @@ std::vector<Quad> quads_from(
         };
         if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
         for (Direction dir : Quad::directions) {
-          auto neighbour_pos = block_position + Quad::lookup_normal(dir);
+          auto neighbour_pos = block_position + Vector3Int{static_cast<int>(Quad::lookup_normal(dir).x), static_cast<int>(Quad::lookup_normal(dir).y), static_cast<int>(Quad::lookup_normal(dir).z)};
           // todo: remove this once world is infinitely generated
           if (!chunk_section.world.contains(neighbour_pos) || chunk_section.world.get(neighbour_pos) == BlockType::AIR) {
             quads.push_back(Quad{
@@ -109,7 +109,7 @@ std::vector<Quad> quads_from(
         };
         if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
         for (Direction dir : Quad::directions) {
-          auto neighbour_pos = block_position + Quad::lookup_normal(dir);
+          auto neighbour_pos = block_position + Vector3Int{static_cast<int>(Quad::lookup_normal(dir).x), static_cast<int>(Quad::lookup_normal(dir).y), static_cast<int>(Quad::lookup_normal(dir).z)};
           // todo: remove this once world is infinitely generated
           if (!chunk_section.world.contains(neighbour_pos) || chunk_section.world.get(neighbour_pos) == BlockType::AIR) {
             quads.push_back(Quad{

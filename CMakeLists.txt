@@ -96,6 +96,10 @@ if(BUILD_TESTING)
         tests/test_main.cpp
         tests/test_vector.cpp
         tests/test_world_physics.cpp
+        tests/test_world.cpp
+        tests/test_chunk_section.cpp
+        tests/test_quad.cpp
+        tests/test_mesh_generator.cpp
     )
     target_include_directories(minecraft_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/third_party"

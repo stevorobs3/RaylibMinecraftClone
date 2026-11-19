@@ -71,7 +71,7 @@ struct ChunkSection {
 
   BlockType internal_neighbour(Direction dir, Vector3Int local_position) const {
     assert(contains(local_position));
-    auto neighbour_pos = local_position + Quad::lookup_normal(dir);
+    auto neighbour_pos = local_position + Vector3Int{static_cast<int>(Quad::lookup_normal(dir).x), static_cast<int>(Quad::lookup_normal(dir).y), static_cast<int>(Quad::lookup_normal(dir).z)};
     assert(contains(neighbour_pos));
     return const_blocks()[neighbour_pos.x,neighbour_pos.y,neighbour_pos.z];
   }

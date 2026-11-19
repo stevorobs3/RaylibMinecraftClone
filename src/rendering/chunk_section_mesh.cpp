@@ -14,8 +14,10 @@ void ChunkSectionMesh::create_model(Mesh &mesh) {
 }
 
 void ChunkSectionMesh::unload() {
-  if (model)
+  if (model) {
     UnloadModel(*model);
+    model.reset();
+  }
 }
 
 // todo: this is slow and should be done off the main thread -> and some will need to
