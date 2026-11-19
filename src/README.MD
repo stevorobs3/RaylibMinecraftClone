@@ -34,8 +34,10 @@ The ongoing PR also incorporates architecture and ownership groundwork for Miles
 ### Milestone 3 — Threaded mesh generation
 
 The synchronous implementation already has explicit APIs:
-`WorldMesh::prepare_cpu()` (snapshot + CPU geometry) and
+`WorldMesh::capture_snapshot()` (main-thread world read),
+`WorldMesh::build_cpu()` (CPU-only generation) and
 `WorldMesh::submit_gpu()` (main-thread GPU replacement).
+The synchronous `prepare_cpu()` convenience path combines the first two.
 
 Remaining tasks:
 - [ ] Introduce a bounded worker-thread pool and work queue.

@@ -40,3 +40,18 @@ TEST_CASE("Chunk generation disambiguates reloads even if the revision repeats")
   REQUIRE(fresh.has_value());
   CHECK(meshes.is_current(*fresh));
 }
+
+TEST_CASE("Captured mesh jobs remain immutable after world edits") {
+  World world;
+  TextureAtlas atlas;
+  WorldMesh mesh(world,atlas);
+  const SectionCoord coord{{0,0},3};
+  auto request=mesh.capture_snapshot(coord);
+  REQUIRE(request.has_value());
+  CHECK(request->snapshot.at(5,5,5)==BlockType::AIR);
+  world.set(5,53,5,BlockType::STONE);
+  CHECK(request->snapshot.at(5,5,5)==BlockType::AIR);
+  auto result=mesh.build_cpu(*request);
+  CHECK(result.geometry.empty());
+  CHECK_FALSE(mesh.is_current(result));
+}

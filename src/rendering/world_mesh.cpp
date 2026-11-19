@@ -1,11 +1,19 @@
 #include "world_mesh.h"
 
-std::optional<MeshBuildResult> WorldMesh::prepare_cpu(SectionCoord coord) const {
+std::optional<MeshBuildRequest> WorldMesh::capture_snapshot(SectionCoord coord) const {
   const ChunkSection* section=world_.find_section(coord);
   if(!section) return std::nullopt;
-  auto snapshot=make_snapshot(world_,*section);
   const Chunk* chunk=world_.find_chunk(coord.chunk);
-  return MeshBuildResult{coord,section->revision,chunk->generation,generator_.build(snapshot)};
+  return MeshBuildRequest{coord,section->revision,chunk->generation,
+                          make_snapshot(world_,*section)};
+}
+MeshBuildResult WorldMesh::build_cpu(const MeshBuildRequest& request) const {
+  return MeshBuildResult{request.section,request.revision,request.generation,
+                         generator_.build(request.snapshot)};
+}
+std::optional<MeshBuildResult> WorldMesh::prepare_cpu(SectionCoord coord) const {
+  auto request=capture_snapshot(coord);
+  return request ? std::optional<MeshBuildResult>{build_cpu(*request)} : std::nullopt;
 }
 bool WorldMesh::is_current(const MeshBuildResult& result) const noexcept {
   const ChunkSection* section=world_.find_section(result.section);

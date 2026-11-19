@@ -8,6 +8,12 @@
 #include "mesh_generator.h"
 #include "texture_atlas.h"
 
+struct MeshBuildRequest {
+  SectionCoord section{};
+  std::uint64_t revision=0;
+  std::uint64_t generation=0;
+  ChunkSnapshot snapshot;
+};
 struct MeshBuildResult {
   SectionCoord section{};
   std::uint64_t revision=0;
@@ -20,7 +26,11 @@ struct WorldMesh {
   WorldMesh(const WorldMesh&)=delete;
   WorldMesh& operator=(const WorldMesh&)=delete;
 
-  // CPU-only, future worker-safe after snapshot creation.
+  // Main-thread capture: reads live world exactly once into an owned snapshot.
+  std::optional<MeshBuildRequest> capture_snapshot(SectionCoord coord) const;
+  // Pure CPU work: safe for workers with immutable request and atlas layout.
+  MeshBuildResult build_cpu(const MeshBuildRequest& request) const;
+  // Synchronous convenience path, useful until Milestone 3.
   std::optional<MeshBuildResult> prepare_cpu(SectionCoord coord) const;
   // GPU-only: rejects stale/unloaded section results.
   bool submit_gpu(MeshBuildResult&& result);
