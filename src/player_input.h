@@ -9,11 +9,12 @@
 struct PlayerInput {
   Vector2 movement{}; // x: forward/back, y: right/left
   Vector2 look_delta{};
-  bool jump         = false;
-  bool place_block  = false;
-  bool remove_block = false;
-  bool reset_world  = false;
-  bool toggle_debug = false;
+  bool jump            = false;
+  bool place_block     = false;
+  bool remove_block    = false;
+  bool reset_world     = false;
+  bool toggle_debug    = false;
+  bool take_screenshot = false;
 
   static PlayerInput poll() {
     PlayerInput input;
@@ -31,6 +32,7 @@ struct PlayerInput {
     input.remove_block = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     input.reset_world  = IsKeyPressed(KEY_R);
     input.toggle_debug = IsKeyPressed(KEY_F3);
+    input.take_screenshot = IsKeyPressed(KEY_F4);
     return input;
   }
 
@@ -43,6 +45,7 @@ struct PlayerInput {
   }
   bool wants_reset() const { return reset_world; }
   bool wants_toggle_debug() const { return toggle_debug; }
+  bool wants_take_screenshot() const { return take_screenshot; }
 
   PlayerMovementInput movement_command() const {
     return {.movement = movement};

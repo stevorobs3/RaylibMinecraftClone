@@ -77,6 +77,11 @@ int Game::run() {
       fixed_stepper.reset();
     }
 
+    if (input.wants_take_screenshot()) {
+      const auto directory = fs::path(GetApplicationDirectory());
+      TakeScreenshot((directory / "screenshot01.png").string().c_str());
+    }
+
     // The targeting ray sees this frame's mouse movement.
     controller.apply_look(input.look_delta);
     player.find_target(world, camera);
