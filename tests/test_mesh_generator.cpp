@@ -78,6 +78,35 @@ TEST_CASE("Grass block includes a tinted overlay on four sides") {
   }
 }
 
+TEST_CASE(
+  "Grass overlay does not offset or duplicate physical cube faces"
+) {
+  World world;
+  TextureAtlas atlas;
+  MeshGenerator generator(atlas);
+
+  world.set(8, 56, 8, BlockType::GRASS);
+  const auto* section = world.find_section({{0, 0}, 3});
+  REQUIRE(section != nullptr);
+
+  const auto grass = generator.build(
+    make_snapshot(world, *section)
+  );
+  REQUIRE(grass.size() == 1);
+
+  world.set(8, 56, 8, BlockType::STONE);
+  const auto stone = generator.build(
+    make_snapshot(world, *section)
+  );
+  REQUIRE(stone.size() == 1);
+
+  // Textures change, but the same physical faces are emitted.
+  CHECK(grass[0].vertices == stone[0].vertices);
+  CHECK(grass[0].indices == stone[0].indices);
+  CHECK(grass[0].normals == stone[0].normals);
+  CHECK(grass[0].vertex_count == stone[0].vertex_count);
+}
+
 TEST_CASE("Solid section does not emit internal faces") {
   World world;
   TextureAtlas atlas;
