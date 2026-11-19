@@ -29,10 +29,14 @@ bool WorldMesh::submit_gpu(MeshBuildResult&& result) {
     section->acknowledge(result.revision);
     return true;
   }
-  auto [it,inserted]=chunk_section_meshes.try_emplace(result.section);
-  if(!it->second.replace(result.geometry,atlas_.texture())) {
-    if(inserted) chunk_section_meshes.erase(it);
-    return false;
+  auto it=chunk_section_meshes.find(result.section);
+  if(it==chunk_section_meshes.end()) {
+    // Build first; a failing allocation cannot leave a half-created map entry.
+    ChunkSectionMesh replacement;
+    if(!replacement.replace(result.geometry,atlas_.texture())) return false;
+    chunk_section_meshes.try_emplace(result.section,std::move(replacement));
+  } else {
+    if(!it->second.replace(result.geometry,atlas_.texture())) return false;
   }
   section->acknowledge(result.revision);
   return true;

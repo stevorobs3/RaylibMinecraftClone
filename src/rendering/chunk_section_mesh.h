@@ -25,6 +25,11 @@ private:
 };
 class ChunkSectionMesh {
 public:
+  ChunkSectionMesh()=default;
+  ChunkSectionMesh(const ChunkSectionMesh&)=delete;
+  ChunkSectionMesh& operator=(const ChunkSectionMesh&)=delete;
+  ChunkSectionMesh(ChunkSectionMesh&&) noexcept=default;
+  ChunkSectionMesh& operator=(ChunkSectionMesh&&) noexcept=default;
   // All methods in this object access GPU resources: main thread only.
   bool replace(const std::vector<MeshData>& data,Texture2D atlas_texture);
   const std::vector<OwnedModel>& models() const noexcept { return models_; }
