@@ -17,6 +17,7 @@ TEST_CASE("Controller keeps camera aligned with feet") {
   controller.apply_look({10, 5});
   CHECK(camera.position.x == doctest::Approx(controller.feet.x));
 }
+
 TEST_CASE("Fixed-step movement works with negative world coordinates") {
   World world;
   WorldPhysics physics(world);

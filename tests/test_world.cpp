@@ -2,8 +2,9 @@
 #include "world/world.h"
 #include <type_traits>
 
-TEST_CASE("Initial terrain is centred on the origin and 24 sections tall")
-  {
+TEST_CASE(
+  "Initial terrain is centred on the origin and 24 sections tall"
+) {
   World world;
   CHECK(world.chunks().size() == 4);
   CHECK(world.is_loaded({-1, -1}));
@@ -20,7 +21,9 @@ TEST_CASE("Initial terrain is centred on the origin and 24 sections tall")
   CHECK_FALSE(world.contains({16, 7, 0}));
 }
 
-TEST_CASE("World edits are explicit and can be checked without exceptions") {
+TEST_CASE(
+  "World edits are explicit and can be checked without exceptions"
+) {
   World world;
   CHECK(world.set(-1, 7, -1, BlockType::DIRT) == SetBlockResult::Changed);
   CHECK(world.get(-1, 7, -1) == BlockType::DIRT);
@@ -36,10 +39,12 @@ TEST_CASE("World edits are explicit and can be checked without exceptions") {
   CHECK_FALSE(world.try_get({0, -1, 0}).has_value());
 }
 
-TEST_CASE("Boundary edits invalidate both adjacent chunks and vertical sections") {
+TEST_CASE(
+  "Boundary edits invalidate both adjacent chunks and vertical sections"
+) {
   World world;
   for (const auto& [coord, chunk] : world.chunks())
-    for (const auto& s:chunk.chunk_sections) {
+    for (const auto& s : chunk.chunk_sections) {
       auto* mutable_section = world.find_section(s.coord);
       mutable_section->acknowledge(mutable_section->revision);
     }
@@ -52,7 +57,7 @@ TEST_CASE("Boundary edits invalidate both adjacent chunks and vertical sections"
   CHECK(world.set(-1, 15, -1, BlockType::STONE) ==
     SetBlockResult::Changed);
   CHECK(world.find_section(self)->dirty);
-  CHECK(world.find_section(self)->revision>before);
+  CHECK(world.find_section(self)->revision > before);
   CHECK(world.find_section(east)->dirty);
   CHECK(world.find_section(south)->dirty);
   CHECK(world.find_section(upper)->dirty);
@@ -62,7 +67,10 @@ TEST_CASE("Boundary edits invalidate both adjacent chunks and vertical sections"
   CHECK(world.find_section(self)->revision == unchanged);
 }
 
-TEST_CASE("Chunk and section lookup preserve data across vertical and horizontal edges") {
+TEST_CASE(
+  "Chunk and section lookup preserve data across vertical and "
+  "horizontal edges"
+) {
   World world;
   CHECK(world.set(-16, 16, 0, BlockType::STONE) ==
     SetBlockResult::Changed);
@@ -82,7 +90,9 @@ TEST_CASE("Chunk map retains addresses when rehashing") {
   CHECK(world.find_chunk({-1, -1}) == original);
 }
 
-TEST_CASE("Explicit creation loads new coordinates without implicit reads") {
+TEST_CASE(
+  "Explicit creation loads new coordinates without implicit reads"
+) {
   World world;
   CHECK_FALSE(world.try_get({-33, 7, 0}).has_value());
   auto& chunk = world.get_or_create_chunk({-3, 0});
@@ -91,7 +101,9 @@ TEST_CASE("Explicit creation loads new coordinates without implicit reads") {
   CHECK(world.is_loaded({-3, 0}));
 }
 
-TEST_CASE("Reset restores terrain and gives recreated chunks new generations") {
+TEST_CASE(
+  "Reset restores terrain and gives recreated chunks new generations"
+) {
   World world;
   const auto old_generation = world.find_chunk({0, 0})->generation;
   world.set(0, 7, 0, BlockType::DIRT);
@@ -100,10 +112,13 @@ TEST_CASE("Reset restores terrain and gives recreated chunks new generations") {
   CHECK(world.find_chunk({0, 0})->generation != old_generation);
 }
 
-TEST_CASE("Unloading a chunk invalidates its neighbours and removes block visibility") {
+TEST_CASE(
+  "Unloading a chunk invalidates its neighbours and removes "
+  "block visibility"
+) {
   World world;
   for (auto& [coord, chunk] : world.chunks())
-    for (auto& section:chunk.chunk_sections)
+    for (auto& section : chunk.chunk_sections)
       section.acknowledge(section.revision);
   REQUIRE(world.unload_chunk({0, 0}));
   CHECK_FALSE(world.is_loaded({0, 0}));

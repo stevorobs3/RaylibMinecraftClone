@@ -10,6 +10,7 @@ TEST_CASE("Input maps to an action independent of the player") {
   input.remove_block = true;
   CHECK(input.block_action() == BlockAction::Remove);
 }
+
 TEST_CASE("Removing blocks and preserving bedrock") {
   World world;
   WorldPhysics physics(world);
@@ -25,6 +26,7 @@ TEST_CASE("Removing blocks and preserving bedrock") {
     BlockAction::Remove);
   CHECK(world.get(0, 0, 0) == BlockType::BEDROCK);
 }
+
 TEST_CASE("Placing blocks rejects overlap with the player") {
   World world;
   WorldPhysics physics(world);
@@ -38,6 +40,7 @@ TEST_CASE("Placing blocks rejects overlap with the player") {
     BlockAction::Place);
   CHECK(world.get(0, 8, 0) == BlockType::DIRT);
 }
+
 TEST_CASE("Ray targeting finds the closest intersected block") {
   World world;
   WorldPhysics physics(world);

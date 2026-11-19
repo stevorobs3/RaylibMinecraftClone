@@ -12,7 +12,9 @@ TEST_CASE("Falling player lands on grass without penetrating") {
   CHECK(physics.is_grounded({{0.2f, 7, 0.2f}, {0.8f, 8.8f, 0.8f}}));
 }
 
-TEST_CASE("High speed movement cannot tunnel through blocks in either X direction") {
+TEST_CASE(
+  "High speed movement cannot tunnel through blocks in either X direction"
+) {
   World world;
   world.set(0, 7, 0, BlockType::STONE);
   WorldPhysics physics(world);
@@ -60,6 +62,7 @@ TEST_CASE("No obstacles leave movement and velocity unchanged") {
   CHECK(feet.x == doctest::Approx(0.6f));
   CHECK(velocity.x == doctest::Approx(2));
 }
+
 TEST_CASE("AIR never collides") {
   World world;
   WorldPhysics physics(world);

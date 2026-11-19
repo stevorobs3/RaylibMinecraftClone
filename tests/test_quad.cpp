@@ -2,8 +2,9 @@
 #include "rendering/quad.h"
 #include <cmath>
 
-TEST_CASE("All six voxel faces have matching winding and outward normals")
-  {
+TEST_CASE(
+  "All six voxel faces have matching winding and outward normals"
+) {
   for (Direction direction : Quad::directions) {
     Quad quad{BlockType::STONE, direction, {0, 0, 0}};
     const auto a = quad.vertices[0];

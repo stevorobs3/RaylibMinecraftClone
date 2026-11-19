@@ -3,7 +3,9 @@
 #include "world_physics.h"
 #include <cmath>
 
-TEST_CASE("Floor division and local coordinates reconstruct signed world positions") {
+TEST_CASE(
+  "Floor division and local coordinates reconstruct signed world positions"
+) {
   for (int x = -257; x <= 257; x++) {
     const int q = floor_div(x, 16), r = floor_mod(x, 16);
     CHECK(r >= 0);
@@ -13,6 +15,7 @@ TEST_CASE("Floor division and local coordinates reconstruct signed world positio
     CHECK(World::to_local_position({x, 0, 0}).x == r);
   }
 }
+
 TEST_CASE("Swept AABB halts varying displacements before an obstacle") {
   World world;
   world.set(0, 7, 0, BlockType::STONE);
