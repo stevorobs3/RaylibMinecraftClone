@@ -4,7 +4,7 @@
 
 TEST_CASE("Initial terrain is centred on the origin and 24 sections tall") {
   World world;
-  CHECK(world.chunks.size()==4);
+  CHECK(world.chunks().size()==4);
   CHECK(world.is_loaded({-1,-1}));
   CHECK(world.is_loaded({0,0}));
   CHECK_FALSE(world.is_loaded({1,0}));
@@ -34,7 +34,7 @@ TEST_CASE("World edits are explicit and can be checked without exceptions") {
 
 TEST_CASE("Boundary edits invalidate both adjacent chunks and vertical sections") {
   World world;
-  for(auto& [coord,chunk]:world.chunks)
+  for(auto& [coord,chunk]:world.chunks())
     for(auto& s:chunk.chunk_sections) s.acknowledge(s.revision);
 
   const SectionCoord self{{-1,-1},0};
@@ -90,7 +90,7 @@ TEST_CASE("Reset restores terrain and gives recreated chunks new generations") {
 
 TEST_CASE("Unloading a chunk invalidates its neighbours and removes block visibility") {
   World world;
-  for(auto& [coord,chunk]:world.chunks)
+  for(auto& [coord,chunk]:world.chunks())
     for(auto& section:chunk.chunk_sections) section.acknowledge(section.revision);
   REQUIRE(world.unload_chunk({0,0}));
   CHECK_FALSE(world.is_loaded({0,0}));

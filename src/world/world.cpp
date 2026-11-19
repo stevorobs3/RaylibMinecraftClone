@@ -3,13 +3,13 @@
 World::World() { initialise(); }
 
 void World::initialise() {
-  chunks.clear();
+  chunks_.clear();
   constexpr int start = -initial_grid_size/2;
   for (int z=0;z<initial_grid_size;++z)
     for (int x=0;x<initial_grid_size;++x)
       get_or_create_chunk({start+x,start+z});
 
-  for (auto& [coord,chunk]:chunks) {
+  for (auto& [coord,chunk]:chunks_) {
     for (int lx=0;lx<chunk_size;++lx)
       for (int lz=0;lz<chunk_size;++lz) {
         const int x=chunk.origin.x+lx;
@@ -26,20 +26,20 @@ bool World::contains(Vector3Int pos) const noexcept {
   return pos.y>=0 && pos.y<height && is_loaded(to_chunk_coord(pos));
 }
 bool World::is_loaded(ChunkCoord coord) const noexcept {
-  return chunks.find(coord)!=chunks.end();
+  return chunks_.find(coord)!=chunks_.end();
 }
 Chunk* World::find_chunk(ChunkCoord coord) noexcept {
-  auto it=chunks.find(coord);
-  return it==chunks.end()?nullptr:&it->second;
+  auto it=chunks_.find(coord);
+  return it==chunks_.end()?nullptr:&it->second;
 }
 const Chunk* World::find_chunk(ChunkCoord coord) const noexcept {
-  auto it=chunks.find(coord);
-  return it==chunks.end()?nullptr:&it->second;
+  auto it=chunks_.find(coord);
+  return it==chunks_.end()?nullptr:&it->second;
 }
 Chunk& World::get_or_create_chunk(ChunkCoord coord) {
-  auto it_existing=chunks.find(coord);
-  if(it_existing!=chunks.end()) return it_existing->second;
-  auto [it,inserted]=chunks.try_emplace(coord,coord,++next_generation_);
+  auto it_existing=chunks_.find(coord);
+  if(it_existing!=chunks_.end()) return it_existing->second;
+  auto [it,inserted]=chunks_.try_emplace(coord,coord,++next_generation_);
   if (inserted) {
     for (int section=0;section<Chunk::n_sections;++section) {
       mark_dirty({{coord.x-1,coord.z},section});
@@ -51,7 +51,7 @@ Chunk& World::get_or_create_chunk(ChunkCoord coord) {
   return it->second;
 }
 bool World::unload_chunk(ChunkCoord coord) {
-  if(chunks.erase(coord)==0) return false;
+  if(chunks_.erase(coord)==0) return false;
   // Removing a chunk exposes outer faces on any existing neighbours.
   for(int section=0;section<Chunk::n_sections;++section) {
     mark_dirty({{coord.x-1,coord.z},section});
@@ -70,6 +70,24 @@ const ChunkSection* World::find_section(SectionCoord coord) const noexcept {
   const Chunk* chunk=find_chunk(coord.chunk);
   if (!chunk || coord.y<0 || coord.y>=Chunk::n_sections) return nullptr;
   return &chunk->chunk_sections[coord.y];
+}
+SetBlockResult World::fill_section(SectionCoord coord,BlockType type) noexcept {
+  ChunkSection* section=find_section(coord);
+  if(!section) return coord.y<0 || coord.y>=Chunk::n_sections ?
+    SetBlockResult::OutOfBounds : SetBlockResult::Unloaded;
+  if(!section->fill(type)) return SetBlockResult::Unchanged;
+  // Every neighbouring section may expose or hide faces.
+  mark_dirty({{coord.chunk.x-1,coord.chunk.z},coord.y});
+  mark_dirty({{coord.chunk.x+1,coord.chunk.z},coord.y});
+  mark_dirty({{coord.chunk.x,coord.chunk.z-1},coord.y});
+  mark_dirty({{coord.chunk.x,coord.chunk.z+1},coord.y});
+  mark_dirty({coord.chunk,coord.y-1});
+  mark_dirty({coord.chunk,coord.y+1});
+  return SetBlockResult::Changed;
+}
+void World::mark_all_dirty() noexcept {
+  for(auto& [coord,chunk]:chunks_)
+    for(auto& section:chunk.chunk_sections) section.mark_dirty();
 }
 std::optional<BlockType> World::try_get(Vector3Int pos) const noexcept {
   if(pos.y<0 || pos.y>=height) return std::nullopt;

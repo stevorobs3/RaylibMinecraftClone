@@ -35,7 +35,7 @@ void WorldMesh::rebuild_dirty_meshes() {
     if(!world_.find_section(it->first)) it=chunk_section_meshes.erase(it);
     else ++it;
   }
-  for(auto& [coord,chunk]:world_.chunks)
+  for(auto& [coord,chunk]:world_.chunks())
     for(auto& section:chunk.chunk_sections) {
       if(!section.dirty) continue;
       auto result=prepare_cpu(section.coord);
@@ -43,7 +43,6 @@ void WorldMesh::rebuild_dirty_meshes() {
     }
 }
 void WorldMesh::rebuild_all_meshes() {
-  for(auto& [coord,chunk]:world_.chunks)
-    for(auto& section:chunk.chunk_sections) section.mark_dirty();
+  world_.mark_all_dirty();
   rebuild_dirty_meshes();
 }

@@ -32,6 +32,8 @@ struct World {
   const Chunk* find_chunk(ChunkCoord coord) const noexcept;
   Chunk& get_or_create_chunk(ChunkCoord coord); // may allocate
   bool unload_chunk(ChunkCoord coord); // no GPU resources owned by World
+  SetBlockResult fill_section(SectionCoord coord,BlockType type) noexcept;
+  void mark_all_dirty() noexcept;
   ChunkSection* find_section(SectionCoord coord) noexcept;
   const ChunkSection* find_section(SectionCoord coord) const noexcept;
 
@@ -62,7 +64,9 @@ struct World {
   }
   std::vector<Vector3Int> positions_within_range(Vector3 origin,int range) const;
 
-  std::unordered_map<ChunkCoord,Chunk,ChunkCoordHash> chunks;
+  using ChunkMap=std::unordered_map<ChunkCoord,Chunk,ChunkCoordHash>;
+  const ChunkMap& chunks() const noexcept { return chunks_; }
 private:
+  ChunkMap chunks_;
   std::uint64_t next_generation_=0;
 };

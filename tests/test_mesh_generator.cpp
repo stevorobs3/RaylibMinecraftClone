@@ -49,7 +49,7 @@ TEST_CASE("Solid section does not emit internal faces") {
   MeshGenerator generator(atlas);
   auto* section=world.find_section({{0,0},3});
   REQUIRE(section!=nullptr);
-  section->fill(BlockType::STONE);
+  world.fill_section(section->coord,BlockType::STONE);
   const auto mesh=generator.build(make_snapshot(world,*section));
   REQUIRE(mesh.size()==1);
   CHECK(mesh[0].vertex_count==6*16*16*4);

@@ -23,9 +23,9 @@ TEST_CASE("Local fill, revision, acknowledgement and bounds") {
   REQUIRE(s!=nullptr);
   s->acknowledge(s->revision);
   CHECK_FALSE(s->dirty);
-  CHECK_FALSE(s->fill(BlockType::AIR));
+  CHECK(world.fill_section(s->coord,BlockType::AIR)==SetBlockResult::Unchanged);
   const auto version=s->revision;
-  CHECK(s->fill(BlockType::STONE));
+  CHECK(world.fill_section(s->coord,BlockType::STONE)==SetBlockResult::Changed);
   CHECK(s->dirty);
   CHECK(s->revision>version);
   CHECK(s->get_local({3,4,5})==BlockType::STONE);
@@ -33,7 +33,7 @@ TEST_CASE("Local fill, revision, acknowledgement and bounds") {
   CHECK(s->dirty);
   s->acknowledge(s->revision);
   CHECK_FALSE(s->dirty);
-  CHECK_FALSE(s->fill(BlockType::STONE));
+  CHECK(world.fill_section(s->coord,BlockType::STONE)==SetBlockResult::Unchanged);
   CHECK(s->contains({0,0,0}));
   CHECK(s->contains({15,15,15}));
   CHECK_FALSE(s->contains({16,0,0}));

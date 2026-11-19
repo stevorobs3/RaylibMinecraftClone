@@ -42,7 +42,9 @@ struct ChunkSection {
     assert(contains(p));
     return const_blocks()[p.x,p.y,p.z];
   }
-  // Mutations invalidate the section; World additionally invalidates neighbours.
+  // Mutations only via World, which also invalidates neighbour geometry.
+private:
+  friend struct World;
   bool set_local(Vector3Int p, BlockType type) noexcept {
     assert(contains(p));
     const std::size_t i = (static_cast<std::size_t>(p.x)*n + p.y)*n + p.z;
@@ -66,6 +68,5 @@ struct ChunkSection {
   bool dirty = true;
   std::uint64_t revision = 1;
 
-private:
   std::array<BlockType,blockCount> storage{};
 };
