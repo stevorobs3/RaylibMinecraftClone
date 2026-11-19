@@ -1,3 +1,8 @@
+#include <cstring>
+#include <limits>
+#include <new>
+#include <stdexcept>
+#include <type_traits>
 
 #include <array>
 
@@ -43,15 +48,16 @@ std::vector<Quad> quads_from(
   for (int y : {0, ChunkSection::n - 1}) {
     for (int x = 0; x < ChunkSection::n; x++) {
       for (int z = 0; z < ChunkSection::n; z++) {
-        auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
+        auto block_position = Vector3Int{
+          x + static_cast<int>(chunk_section.origin.x),
+          y + static_cast<int>(chunk_section.origin.y),
+          z + static_cast<int>(chunk_section.origin.z)
+        };
         if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
         for (Direction dir : Quad::directions) {
           auto neighbour_pos = block_position + Quad::lookup_normal(dir);
           // todo: remove this once world is infinitely generated
-          if (!chunk_section.world.contains(neighbour_pos))
-            continue;
-          BlockType neighbour = chunk_section.world.get(neighbour_pos);
-          if (neighbour == BlockType::AIR) {
+          if (!chunk_section.world.contains(neighbour_pos) || chunk_section.world.get(neighbour_pos) == BlockType::AIR) {
             quads.push_back(Quad{
               chunk_section.world.get(block_position),
               dir,
@@ -68,15 +74,16 @@ std::vector<Quad> quads_from(
     // we've already done y = 0 and y = ChunkSection::n - 1 for top and bottom faces
     for (int y = 1; y < ChunkSection::n - 1; y++) {
       for (int z = 0; z < ChunkSection::n; z++) {
-        auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
+        auto block_position = Vector3Int{
+          x + static_cast<int>(chunk_section.origin.x),
+          y + static_cast<int>(chunk_section.origin.y),
+          z + static_cast<int>(chunk_section.origin.z)
+        };
         if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
         for (Direction dir : Quad::directions) {
           auto neighbour_pos = block_position + Quad::lookup_normal(dir);
           // todo: remove this once world is infinitely generated
-          if (!chunk_section.world.contains(neighbour_pos))
-            continue;
-          auto neighbour = chunk_section.world.get(neighbour_pos);
-          if (neighbour == BlockType::AIR) {
+          if (!chunk_section.world.contains(neighbour_pos) || chunk_section.world.get(neighbour_pos) == BlockType::AIR) {
             quads.push_back(Quad{
               chunk_section.world.get(block_position),
               dir,
@@ -95,15 +102,16 @@ std::vector<Quad> quads_from(
     for (int x = 1; x < ChunkSection::n - 1; x++) {
       // we've already done y = 0 and y = ChunkSection::n - 1 for top and bottom faces
       for (int y = 1; y < ChunkSection::n - 1; y++) {
-        auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
+        auto block_position = Vector3Int{
+          x + static_cast<int>(chunk_section.origin.x),
+          y + static_cast<int>(chunk_section.origin.y),
+          z + static_cast<int>(chunk_section.origin.z)
+        };
         if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
         for (Direction dir : Quad::directions) {
           auto neighbour_pos = block_position + Quad::lookup_normal(dir);
           // todo: remove this once world is infinitely generated
-          if (!chunk_section.world.contains(neighbour_pos))
-            continue;
-          auto neighbour = chunk_section.world.get(neighbour_pos);
-          if (neighbour == BlockType::AIR) {
+          if (!chunk_section.world.contains(neighbour_pos) || chunk_section.world.get(neighbour_pos) == BlockType::AIR) {
             quads.push_back(Quad{
               chunk_section.world.get(block_position),
               dir,
@@ -121,7 +129,7 @@ std::vector<Quad> quads_from(
 }
 
 
-std::optional<Mesh> MeshGenerator::from(ChunkSection &chunk_section) {
+std::optional<MeshData> MeshGenerator::build(const ChunkSection &chunk_section) const {
 
     // step 1:
     // todo: quads!
@@ -142,80 +150,66 @@ std::optional<Mesh> MeshGenerator::from(ChunkSection &chunk_section) {
       ).c_str());
     }
 
-    // step 2:
-    // iterate over that list, generating all the mesh vertices
+    if (quads_to_render.size() * 4 > 65536u)
+      throw std::length_error("raylib Mesh uses 16-bit indices");
 
-    int vertex_index = 0;
-    int vertex_count = 0;
-    int normal_index = 0;
-    int tex_coords_index = 0;
-    int indices_index = 0;
-    int colours_index = 0;
-
-    Mesh mesh{};
-
-    mesh.triangleCount = quads_to_render.size() * 2;
-    mesh.vertexCount = quads_to_render.size() * 4;
-
-    mesh.vertices = (float *)MemAlloc(mesh.vertexCount*3*sizeof(float));    // 3 vertices, 3 coordinates each (x, y, z)
-    mesh.texcoords = (float *)MemAlloc(mesh.vertexCount*2*sizeof(float));   // 3 vertices, 2 coordinates each (x, y)
-    mesh.normals = (float *)MemAlloc(mesh.vertexCount*3*sizeof(float));     // 3 vertices, 3 coordinates each (x, y, z)
-    mesh.indices = (unsigned short *)MemAlloc(quads_to_render.size()*6*sizeof(unsigned short)); // 6 indices per face
-    mesh.colors = (unsigned char *)MemAlloc(mesh.vertexCount * 4* sizeof(char));
-
-    for (Quad& quad : quads_to_render) {
-      auto tex_coords = texture_atlas.lookup_texture_uv(
-        quad.block_type,
-        quad.direction
-      );
-      for (int i = 0; i < Quad::n_vertices; i ++) {
-        mesh.vertices[vertex_index]          = quad.vertices[i].x;
-        mesh.vertices[vertex_index + 1]      = quad.vertices[i].y;
-        mesh.vertices[vertex_index + 2]      = quad.vertices[i].z;
-
-        mesh.normals[normal_index]           = quad.normal.x;
-        mesh.normals[normal_index + 1]       = quad.normal.y;
-        mesh.normals[normal_index + 2]       = quad.normal.z;
-
-        mesh.texcoords[tex_coords_index]     = tex_coords[i].x;
-        mesh.texcoords[tex_coords_index + 1] = tex_coords[i].y;
-
-        mesh.colors[colours_index    ]       = quad.color.r;
-        mesh.colors[colours_index + 1]       = quad.color.g;
-        mesh.colors[colours_index + 2]       = quad.color.b;
-        mesh.colors[colours_index + 3]       = quad.color.a;
-
-        normal_index     += 3;
-        vertex_index     += 3;
-        tex_coords_index += 2;
-        colours_index    += 4;
+    MeshData data;
+    data.vertex_count = static_cast<int>(quads_to_render.size() * 4);
+    data.triangle_count = static_cast<int>(quads_to_render.size() * 2);
+    data.vertices.reserve(data.vertex_count * 3);
+    data.normals.reserve(data.vertex_count * 3);
+    data.texcoords.reserve(data.vertex_count * 2);
+    data.colors.reserve(data.vertex_count * 4);
+    data.indices.reserve(quads_to_render.size() * 6);
+    for (const auto& quad : quads_to_render) {
+      const auto tex_coords = texture_atlas.lookup_texture_uv(quad.block_type, quad.direction);
+      unsigned short start = static_cast<unsigned short>(data.vertices.size() / 3);
+      for (int i = 0; i < Quad::n_vertices; ++i) {
+        auto v = quad.vertices[i];
+        data.vertices.insert(data.vertices.end(), {v.x, v.y, v.z});
+        data.normals.insert(data.normals.end(), {quad.normal.x,quad.normal.y,quad.normal.z});
+        data.texcoords.insert(data.texcoords.end(), {tex_coords[i].x,tex_coords[i].y});
+        data.colors.insert(data.colors.end(), {quad.color.r,quad.color.g,quad.color.b,quad.color.a});
       }
-     /* we want all faces to be regular like this:
-      0  1
-      2  3
-      triangle indexes are then:
-      021 and  312
-     */
-      // triangle 021
-      mesh.indices[indices_index]     = vertex_count;
-      mesh.indices[indices_index + 1] = vertex_count + 2;
-      mesh.indices[indices_index + 2] = vertex_count + 1;
-
-      // triangle 312
-      mesh.indices[indices_index + 3] = vertex_count + 3;
-      mesh.indices[indices_index + 4] = vertex_count + 1;
-      mesh.indices[indices_index + 5] = vertex_count + 2;
-      indices_index += 6;
-      vertex_count  += 4;
+      data.indices.insert(data.indices.end(), {
+        static_cast<unsigned short>(start), static_cast<unsigned short>(start+2),
+        static_cast<unsigned short>(start+1), static_cast<unsigned short>(start+3),
+        static_cast<unsigned short>(start+1), static_cast<unsigned short>(start+2)
+      });
     }
+    return data;
+}
 
-    //todo: log info about the mesh
-    // step 3:
-    // upload to gpu
-    // Upload mesh data from CPU (RAM) to GPU (VRAM) memory
-    // todo: can this be done from a separate thread - probs main only.
-    // todo: separate this step so that the mesh building can happen on a non main thread
-    UploadMesh(&mesh, false);
-
-    return mesh;
+Mesh MeshGenerator::upload(const MeshData& data) {
+  Mesh mesh{};
+  mesh.vertexCount = data.vertex_count;
+  mesh.triangleCount = data.triangle_count;
+  auto copy = [](const auto& src) {
+    using T = typename std::decay_t<decltype(src)>::value_type;
+    T* ptr = static_cast<T*>(MemAlloc(src.size() * sizeof(T)));
+    if (!ptr) throw std::bad_alloc();
+    std::memcpy(ptr, src.data(), src.size() * sizeof(T));
+    return ptr;
+  };
+  try {
+    mesh.vertices = copy(data.vertices);
+    mesh.texcoords = copy(data.texcoords);
+    mesh.normals = copy(data.normals);
+    mesh.colors = copy(data.colors);
+    mesh.indices = copy(data.indices);
+  } catch (...) {
+    MemFree(mesh.vertices);
+    MemFree(mesh.texcoords);
+    MemFree(mesh.normals);
+    MemFree(mesh.colors);
+    MemFree(mesh.indices);
+    throw;
   }
+  UploadMesh(&mesh, false);
+  return mesh;
+}
+
+std::optional<Mesh> MeshGenerator::from(ChunkSection& section) const {
+  auto data = build(section);
+  return data ? std::optional<Mesh>(upload(*data)) : std::nullopt;
+}

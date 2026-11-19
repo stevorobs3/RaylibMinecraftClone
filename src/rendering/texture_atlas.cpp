@@ -9,7 +9,7 @@
 std::array<Vector2, 4> TextureAtlas::lookup_texture_uv(
     BlockType block_type,
     Direction dir
-) {
+) const {
   int index = textures_lookup[static_cast<int>(block_type)]
     [static_cast<int>(dir)];
   int pos_x = index % n;
@@ -44,10 +44,16 @@ bool TextureAtlas::load() {
   const fs::path path_prefix = app_dir / "assets";
 
   AllImageMips all_image_mips{};
+  auto cleanup = [&] {
+    for (auto& levels : all_image_mips)
+      for (auto& image : levels)
+        if (image.data) { UnloadImage(image); image = {}; }
+  };
   for (int i = 0; i < file_names.size(); i++) {
     fs::path path = path_prefix / file_names[i];
     ImageMips mips = load_image_with_mips(path);
-    if (mips.empty()) {
+    if (!mips[0].data) {
+      cleanup();
       return false;
     }
     all_image_mips[i] = mips;
@@ -62,9 +68,10 @@ bool TextureAtlas::load() {
     }
   }
 
+  unload();
   texture = to_texture(final_images);
-
-  return true;
+  cleanup();
+  return texture.id != 0;
 }
 
 void TextureAtlas::unload() {
@@ -131,7 +138,7 @@ Texture2D TextureAtlas::to_texture(ImageMips mips) {
     glTexImage2D(
       GL_TEXTURE_2D,
       level,
-      GL_RGB8,
+      GL_RGBA8,
       image.width,
       image.height,
       0,

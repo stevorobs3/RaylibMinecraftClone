@@ -45,7 +45,7 @@ struct TextureAtlas {
   std::array<Vector2, 4> lookup_texture_uv(
     BlockType block_type,
     Direction dir
-  );
+  ) const;
 
   bool load();
   void unload();
