@@ -69,6 +69,7 @@ int Game::run()
     }
     if (input.wants_reset()) {
       reset(world, world_mesh, player, controller, player_initial_position);
+      fixed_stepper.reset();
     }
 
     // The targeting ray sees the mouse movement of this frame.
@@ -77,8 +78,11 @@ int Game::run()
     player.find_target(world, camera);
     player.manipulate_blocks(world, physics, controller.bounds(), input.block_action());
 
-    // Constant-acceleration movement and AABB collisions at 60 Hz.
-    controller.update(input.movement_command(), GetFrameTime());
+    // Multiple simulation systems can subscribe to this shared 60 Hz tick.
+    if (input.jump) controller.queue_jump();
+    fixed_stepper.advance(GetFrameTime(),[&](float dt) {
+      controller.fixed_update(input.movement_command(),dt);
+    });
 
 
     // todo: off main thread

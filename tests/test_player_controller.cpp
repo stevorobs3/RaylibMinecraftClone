@@ -24,8 +24,8 @@ TEST_CASE("Fixed-step movement works with negative world coordinates") {
     .up={0,1,0},.fovy=75,.projection=CAMERA_PERSPECTIVE
   };
   PlayerController controller(world,physics,camera,{-1.5f,7,0.5f},{0.6f,1.8f,0.6f});
-  PlayerMovementInput input{{1,0},false};
-  controller.update(input,1.0f/60.0f);
+  PlayerMovementInput input{{1,0}};
+  controller.fixed_update(input,1.0f/60.0f);
   CHECK(controller.feet.x>-1.5f);
   CHECK(controller.feet.y==doctest::Approx(7));
   CHECK(controller.grounded);

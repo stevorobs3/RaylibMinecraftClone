@@ -9,6 +9,7 @@
 #include "rendering/texture_atlas.h"
 #include "rendering/render.h"
 #include "world_physics.h"
+#include "fixed_step.h"
 
 struct Game {
   TextureAtlas texture_atlas{};
@@ -21,6 +22,7 @@ struct Game {
   PlayerController controller;
   WorldMesh world_mesh;
   Renderer renderer;
+  FixedStepper fixed_stepper{};
 
 
   Game();

@@ -44,6 +44,6 @@ struct PlayerInput {
   bool wants_toggle_debug() const { return toggle_debug; }
 
   PlayerMovementInput movement_command() const {
-    return {.movement = movement, .jump = jump};
+    return {.movement = movement};
   }
 };

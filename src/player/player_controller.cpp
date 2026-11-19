@@ -58,21 +58,13 @@ void PlayerController::apply_look(Vector2 mouse_delta) {
 void PlayerController::reset(Vector3 initial_feet) {
   feet = initial_feet;
   velocity = {};
-  step_accumulator = 0.0f;
   jump_buffer = 0.0f;
   grounded = world_physics.is_grounded(bounds());
   // Keep look direction through reset, as in the original game.
   sync_camera();
 }
 
-void PlayerController::update(
-  const PlayerMovementInput& input,
-  float frame_dt
-) {
-
-  if (input.jump) {
-    jump_buffer = jump_buffer_duration;
-  }
+void PlayerController::fixed_update(const PlayerMovementInput& input,float dt) {
 
   // Horizontal movement is relative to yaw, not pitch.
   const float cy = std::cos(yaw);
@@ -90,8 +82,7 @@ void PlayerController::update(
     horizontal_velocity.z *= speed / length;
   }
 
-  step_accumulator += std::clamp(frame_dt, 0.0f, 0.1f);
-  while (step_accumulator >= fixed_dt) {
+  {
     const bool supported = world_physics.is_grounded(bounds());
     float vertical = velocity.y;
     const bool can_jump = supported && vertical <= 0.1f;
@@ -104,21 +95,20 @@ void PlayerController::update(
     }
 
     // Analytic integration for constant gravity within each tick.
-    const float dy = vertical * fixed_dt +
-                     0.5f * gravity * fixed_dt * fixed_dt;
+    const float dy = vertical * dt +
+                     0.5f * gravity * dt * dt;
     velocity = {
       horizontal_velocity.x,
-      vertical + gravity * fixed_dt,
+      vertical + gravity * dt,
       horizontal_velocity.z
     };
 
     world_physics.move_player(
       feet, velocity, size,
-      {horizontal_velocity.x * fixed_dt, dy, horizontal_velocity.z * fixed_dt}
+      {horizontal_velocity.x * dt, dy, horizontal_velocity.z * dt}
     );
 
-    jump_buffer = std::max(0.0f, jump_buffer - fixed_dt);
-    step_accumulator -= fixed_dt;
+    jump_buffer = std::max(0.0f, jump_buffer - dt);
   }
 
   grounded = world_physics.is_grounded(bounds()) && velocity.y <= 0.1f;

@@ -2,7 +2,6 @@
 
 #include <string>
 #include <format>
-#include "raylib.h"
 
 struct Vector3Int {
 	int x,y,z;
@@ -20,7 +19,3 @@ struct Vector3Int {
     return std::format("{},{},{}",x,y,z);
   }
 };
-
-inline std::string to_string(Vector3 vector3) {
-  return std::format("{},{},{}",vector3.x,vector3.y,vector3.z);
-}

@@ -11,7 +11,6 @@ struct WorldPhysics;
 
 struct PlayerMovementInput {
   Vector2 movement{};  // x: forward/back, y: strafe right/left
-  bool jump = false;
 };
 
 // First-person camera and kinematic player movement. All collision
@@ -33,10 +32,8 @@ struct PlayerController {
   );
 
   void apply_look(Vector2 mouse_delta);
-  void update(
-    const PlayerMovementInput& input,
-    float frame_dt
-  );
+  void queue_jump() noexcept { jump_buffer=jump_buffer_duration; }
+  void fixed_update(const PlayerMovementInput& input,float dt);
   void reset(Vector3 feet);
 
   BoundingBox bounds() const;
@@ -55,14 +52,11 @@ private:
   float yaw = 0.0f;
   float pitch = 0.0f;
 
-  // needed for fixed_update() at 60FPS
-  float step_accumulator = 0.0f;
   float jump_buffer = 0.0f;
 
   static constexpr float speed = 4.0f;
   static constexpr float gravity = -9.81f;
   static constexpr float jump_height = 1.25f;
-  static constexpr float fixed_dt = 1.0f / 60.0f;
   static constexpr float jump_buffer_duration = 0.1f;
 
 };
