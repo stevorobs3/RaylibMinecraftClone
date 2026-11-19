@@ -2,15 +2,16 @@
 #include <cstddef>
 #include <functional>
 
-// Chunk coordinates are signed, independent of world-space float positions.
+// Chunk coordinates are signed, independent of world-space float
+// positions.
 struct ChunkCoord {
   int x = 0, z = 0;
-  bool operator==(const ChunkCoord&) const noexcept = default;
+  bool operator == (const ChunkCoord&) const noexcept = default;
 };
 struct SectionCoord {
   ChunkCoord chunk{};
   int y = 0;
-  bool operator==(const SectionCoord&) const noexcept = default;
+  bool operator == (const SectionCoord&) const noexcept = default;
 };
 constexpr int floor_div(int x, int divisor) noexcept {
   // Precondition: divisor > 0.
@@ -30,7 +31,7 @@ struct ChunkCoordHash {
 };
 struct SectionCoordHash {
   std::size_t operator()(SectionCoord s) const noexcept {
-    const auto h = ChunkCoordHash{}(s.chunk);
+    const auto h     = ChunkCoordHash{}(s.chunk);
     const auto other = std::hash<int>{}(s.y);
     return h ^ (other + 0x9e3779b9u + (h << 6) + (h >> 2));
   }
