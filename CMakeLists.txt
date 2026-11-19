@@ -33,6 +33,7 @@ FetchContent_MakeAvailable(mdspan)
 add_library(minecraft_core STATIC
     src/player/player.cpp
     src/player/player_controller.cpp
+    src/rendering/block_shader.cpp
     src/rendering/chunk_section_mesh.cpp
     src/rendering/mesh_generator.cpp
     src/rendering/render.cpp

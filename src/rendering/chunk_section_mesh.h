@@ -51,6 +51,7 @@ public:
   bool replace(
     const std::vector<MeshData>& data,
     Texture2D atlas_texture,
+    Shader shader,
     std::uint64_t generation
   );
 

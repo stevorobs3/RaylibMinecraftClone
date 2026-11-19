@@ -7,6 +7,7 @@
 #include "chunk_snapshot.h"
 #include "mesh_generator.h"
 #include "texture_atlas.h"
+#include "block_shader.h"
 
 struct MeshBuildRequest {
   SectionCoord section{};
@@ -22,8 +23,12 @@ struct MeshBuildResult {
 };
 
 struct WorldMesh {
-  explicit WorldMesh(World& world, const TextureAtlas& atlas) noexcept
-    : world_(world), atlas_(atlas), generator_(atlas) {}
+  WorldMesh(
+    World& world, const TextureAtlas& atlas,
+    const BlockShader& shader
+  ) noexcept
+    : world_(world), atlas_(atlas),
+      shader_(shader), generator_(atlas) {}
   WorldMesh(const WorldMesh&) = delete;
   WorldMesh& operator=(const WorldMesh&) = delete;
 
@@ -53,5 +58,6 @@ struct WorldMesh {
 private:
   World& world_;
   const TextureAtlas& atlas_;
+  const BlockShader& shader_;
   MeshGenerator generator_;
 };

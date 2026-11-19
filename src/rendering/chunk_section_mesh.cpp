@@ -3,6 +3,7 @@
 bool ChunkSectionMesh::replace(
   const std::vector<MeshData>& data,
   Texture2D texture,
+  Shader shader,
   std::uint64_t generation
 ) {
   std::vector<OwnedModel> replacement;
@@ -34,6 +35,7 @@ bool ChunkSectionMesh::replace(
       return false;
     }
     model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
+    model.materials[0].shader = shader;
     replacement.emplace_back(model);
   }
   // Old GPU objects released after successful replacement.

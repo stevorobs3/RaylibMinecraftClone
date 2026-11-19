@@ -26,7 +26,7 @@ Game::Game()
     controller(
       physics, camera, player_initial_position, player_size
     ),
-    world_mesh(world, texture_atlas),
+    world_mesh(world, texture_atlas, block_shader),
     renderer(world, world_mesh, player, controller) {
   TraceLog(LOG_INFO, "Creating Game");
 }
@@ -51,6 +51,11 @@ void reset(
 int Game::run() {
   if (!texture_atlas.load()) {
     TraceLog(LOG_ERROR, "texture atlas could not be loaded");
+    return -1;
+  }
+
+  if (!block_shader.load()) {
+    TraceLog(LOG_ERROR, "block shader could not be loaded");
     return -1;
   }
 

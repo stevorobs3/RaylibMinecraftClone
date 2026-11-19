@@ -70,7 +70,8 @@ bool WorldMesh::submit_gpu(MeshBuildResult&& result) {
     ChunkSectionMesh replacement;
 
     if (!replacement.replace(
-      result.geometry, atlas_.texture(), result.generation
+      result.geometry, atlas_.texture(),
+      shader_.get(), result.generation
     )) {
       return false;
     }
@@ -83,7 +84,8 @@ bool WorldMesh::submit_gpu(MeshBuildResult&& result) {
       it->second.unload_gpu();
 
     if (!it->second.replace(
-      result.geometry, atlas_.texture(), result.generation
+      result.geometry, atlas_.texture(),
+      shader_.get(), result.generation
     )) {
       return false;
     }
