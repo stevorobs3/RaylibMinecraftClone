@@ -25,7 +25,5 @@ struct Game {
 
   Game();
 
-  void setup_raylib();
-
   int run();
 };

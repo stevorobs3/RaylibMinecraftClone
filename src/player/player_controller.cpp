@@ -91,7 +91,6 @@ void PlayerController::update(
   }
 
   step_accumulator += std::clamp(frame_dt, 0.0f, 0.1f);
-  // todo: redo this to avoid tunneling
   while (step_accumulator >= fixed_dt) {
     const bool supported = world_physics.is_grounded(bounds());
     float vertical = velocity.y;
@@ -141,12 +140,12 @@ BoundingBox PlayerController::bounds() const {
 std::vector<Vector3Int> PlayerController::blocks_overlapping_with_player() const {
   const BoundingBox bb = bounds();
   std::vector<Vector3Int> blocks;
-  const int min_x = std::max(0, static_cast<int>(std::floor(bb.min.x)));
+  const int min_x = static_cast<int>(std::floor(bb.min.x));
   const int min_y = std::max(0, static_cast<int>(std::floor(bb.min.y)));
-  const int min_z = std::max(0, static_cast<int>(std::floor(bb.min.z)));
-  const int max_x = std::min(World::width, static_cast<int>(std::ceil(bb.max.x)));
+  const int min_z = static_cast<int>(std::floor(bb.min.z));
+  const int max_x = static_cast<int>(std::ceil(bb.max.x));
   const int max_y = std::min(World::height, static_cast<int>(std::ceil(bb.max.y)));
-  const int max_z = std::min(World::width, static_cast<int>(std::ceil(bb.max.z)));
+  const int max_z = static_cast<int>(std::ceil(bb.max.z));
   for (int x = min_x; x < max_x; ++x)
     for (int y = min_y; y < max_y; ++y)
       for (int z = min_z; z < max_z; ++z)

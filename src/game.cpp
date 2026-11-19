@@ -5,15 +5,15 @@
 #include "raymath.h"
 #include "player_input.h"
 #include "rendering/texture_atlas.h"
-#include "timer.h"
+#include <vector>
 #include <optional>
 
 
 Game::Game()
   : player_initial_position{
-    World::width / 2.0f,
+    0.5f,
     7.0f,
-    World::width / 2.0f
+    0.5f
   },
   player_size{0.6f, 1.8f, 0.6f},
   camera{
@@ -35,18 +35,6 @@ Game::Game()
     TraceLog(LOG_INFO, "Creating Game");
    }
 
-void Game::setup_raylib() {
-  // Suppress raylib INFO logs and below
-  // SetTraceLogLevel(LOG_WARNING);
-  TraceLog(LOG_INFO, "setup raylib");
-  SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-  InitWindow(1280, 720, "Raylib minecraft clone");
-  DisableCursor();
-  PollInputEvents();
-  SetTargetFPS(60);
-}
-
-
 namespace {
 void reset(
   World& world,
@@ -64,19 +52,13 @@ void reset(
 
 int Game::run()
  {
-  setup_raylib();
-
   if (!texture_atlas.load()) {
     TraceLog(LOG_ERROR, "texture atlas could not be loaded");
-    CloseWindow();
     return -1;
   }
   world_mesh.rebuild_all_meshes();
 
   bool show_physics_debug = false;
-
-  auto timers = DebugTimers{};
-  auto start = Timer::now();
 
 
   while (!WindowShouldClose()) {
@@ -91,22 +73,16 @@ int Game::run()
 
     // The targeting ray sees the mouse movement of this frame.
 
-    start = Timer::now();
     controller.apply_look(input.look_delta);
-    timers.apply_look = Timer::elapsed_ms(start);
     player.find_target(world, camera);
-    timers.find_target = Timer::elapsed_ms(start);
-    player.manipulate_blocks(world, physics, controller, input);
-    timers.manipulate_blocks = Timer::elapsed_ms(start);
+    player.manipulate_blocks(world, physics, controller.bounds(), input.block_action());
 
     // Constant-acceleration movement and AABB collisions at 60 Hz.
     controller.update(input.movement_command(), GetFrameTime());
-    timers.controller_update = Timer::elapsed_ms(start);
 
 
     // todo: off main thread
     world_mesh.rebuild_dirty_meshes();
-    timers.mesh_rebuild = Timer::elapsed_ms(start);
 
     BeginDrawing();
     ClearBackground(RAYWHITE);
@@ -114,23 +90,16 @@ int Game::run()
 
     renderer.draw_world();
     renderer.draw_player();
-    // todo: this doesn't really represent render time
-    timers.render = Timer::elapsed_ms(start);
 
     EndMode3D();
     renderer.draw_ui(
       show_physics_debug,
-      timers,
-      controller.blocks_overlapping_with_player()
+      show_physics_debug ? controller.blocks_overlapping_with_player() : std::vector<Vector3Int>{}
     );
     EndDrawing();
 
   }
 
-  world_mesh.unload();
-  texture_atlas.unload();
-
-  CloseWindow();
   return 0;
 }
 

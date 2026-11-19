@@ -42,18 +42,18 @@ bool overlaps_other_axes(const BoundingBox& a, const BoundingBox& b, int axis) {
 // Enumerate only cells intersecting the given half-open region.
 template<typename Fn>
 void for_cells(const World& world, const BoundingBox& region, Fn&& visit) {
-  const int min_x = std::max(0, static_cast<int>(std::floor(region.min.x)));
+  const int min_x = static_cast<int>(std::floor(region.min.x));
   const int min_y = std::max(0, static_cast<int>(std::floor(region.min.y)));
-  const int min_z = std::max(0, static_cast<int>(std::floor(region.min.z)));
-  const int max_x = std::min(World::width, static_cast<int>(std::ceil(region.max.x)));
+  const int min_z = static_cast<int>(std::floor(region.min.z));
+  const int max_x = static_cast<int>(std::ceil(region.max.x));
   const int max_y = std::min(World::height, static_cast<int>(std::ceil(region.max.y)));
-  const int max_z = std::min(World::width, static_cast<int>(std::ceil(region.max.z)));
+  const int max_z = static_cast<int>(std::ceil(region.max.z));
 
   for (int x = min_x; x < max_x; ++x)
     for (int y = min_y; y < max_y; ++y)
       for (int z = min_z; z < max_z; ++z) {
         const Vector3Int cell{x, y, z};
-        if (world.get(cell) != BlockType::AIR) visit(cell);
+        if (world.try_get(cell).value_or(BlockType::AIR) != BlockType::AIR) visit(cell);
       }
 }
 

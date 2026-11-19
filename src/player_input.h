@@ -2,6 +2,7 @@
 
 #include <raylib.h>
 #include "player/player_controller.h"
+#include "player/block_action.h"
 
 // A snapshot of all game controls for one rendered frame.
 // struct PlayerInput poll();
@@ -34,8 +35,11 @@ struct PlayerInput {
   }
 
 
-  bool wants_place_block() const { return place_block; }
-  bool wants_remove_block() const { return remove_block; }
+  BlockAction block_action() const noexcept {
+    if (remove_block) return BlockAction::Remove;
+    if (place_block) return BlockAction::Place;
+    return BlockAction::None;
+  }
   bool wants_reset() const { return reset_world; }
   bool wants_toggle_debug() const { return toggle_debug; }
 

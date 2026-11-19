@@ -36,23 +36,21 @@ void Player::find_target(const World& world, const Camera3D& camera) {
 void Player::manipulate_blocks(
   World& world,
   const WorldPhysics& physics,
-  const PlayerController& controller,
-  //todo: don't depend on input, but on an enum of the type of thing to do
-  // Remove, Place, Nothing -> derive that off input
-  const PlayerInput& input
+  BoundingBox player_bounds,
+  BlockAction action
 ) {
   if (!target) {
     return;
   }
 
   const BlockHit hit = *target;
-  if (input.wants_remove_block() && world.get(hit.position) != BlockType::BEDROCK) {
+  if (action == BlockAction::Remove && world.get(hit.position) != BlockType::BEDROCK) {
     world.set(hit.position, BlockType::AIR);
     target.reset();
     return;
   }
 
-  if (input.wants_place_block()) {
+  if (action == BlockAction::Place) {
     const Vector3Int cell = hit.position + hit.face_normal;
     if (!world.contains(cell)) {
       return;
@@ -63,7 +61,7 @@ void Player::manipulate_blocks(
         !physics.player_overlaps_block(
           cell,
           BlockType::DIRT,
-          controller.bounds())) {
+          player_bounds)) {
       world.set(cell, BlockType::DIRT);
       target.reset();
     }
