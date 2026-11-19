@@ -60,14 +60,6 @@ bool TextureAtlas::load() {
   }
 
   ImageMips final_images = stitch_images(all_image_mips);
-  for (Image image : final_images) {
-    fs::path output_dir = app_dir / std::format("output-{}.png", image.width);
-    bool saved = ExportImage(image, output_dir.string().c_str());
-    if (!saved) {
-      TraceLog(LOG_ERROR, std::format("failed to save image:{}", image.width).c_str());
-    }
-  }
-
   unload();
   texture = to_texture(final_images);
   cleanup();

@@ -6,7 +6,7 @@ TEST_CASE("Chunk section fill returns whether its contents changed") {
   auto& section = world.get_chunk_section(0, 3);
   CHECK_FALSE(section.fill(BlockType::AIR));
   CHECK(section.fill(BlockType::STONE));
-  CHECK(section.const_blocks()[3,4,5] == BlockType::STONE);
+  CHECK((section.const_blocks()[3,4,5] == BlockType::STONE));
   CHECK_FALSE(section.fill(BlockType::STONE));
   CHECK(section.fill(BlockType::AIR));
 }

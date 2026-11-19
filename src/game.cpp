@@ -68,6 +68,7 @@ int Game::run()
 
   if (!texture_atlas.load()) {
     TraceLog(LOG_ERROR, "texture atlas could not be loaded");
+    CloseWindow();
     return -1;
   }
   world_mesh.rebuild_all_meshes();

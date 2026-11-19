@@ -26,7 +26,7 @@ TEST_CASE("World coordinates and out-of-bounds access") {
   CHECK_FALSE(world.contains({World::width,0,0}));
   CHECK_THROWS_AS(world.get(-1, 7, 0), std::out_of_range);
   CHECK_THROWS_AS(world.set(World::width, 7, 0, BlockType::DIRT), std::out_of_range);
-  CHECK(world.to_grid_position({-0.1f, 0.1f, -16.1f}) == Vector3Int{-1,0,-17});
+  CHECK(world.to_grid_position({-0.1f, 0.1f, -16.1f}) == Vector3Int(-1,0,-17));
 }
 
 TEST_CASE("Dirty propagation across chunk and section boundaries") {
