@@ -1,130 +1,133 @@
 #include "world_physics.h"
-#include "raylib.h"
 
 #include <algorithm>
 #include <cmath>
-// todo: what asserts are needed here?
 
 namespace {
 
 BoundingBox player_bounds(Vector3 feet, Vector3 size) {
   return {
-    .min = {feet.x - size.x * 0.5f, feet.y, feet.z - size.z * 0.5f},
-    .max = {feet.x + size.x * 0.5f, feet.y + size.y, feet.z + size.z * 0.5f}
+    {feet.x - size.x * 0.5f, feet.y, feet.z - size.z * 0.5f},
+    {feet.x + size.x * 0.5f, feet.y + size.y, feet.z + size.z * 0.5f}
   };
 }
 
-bool overlap(const BoundingBox a, const BoundingBox b) {
+bool overlap(const BoundingBox& a, const BoundingBox& b) {
   return a.min.x < b.max.x && a.max.x > b.min.x &&
          a.min.y < b.max.y && a.max.y > b.min.y &&
          a.min.z < b.max.z && a.max.z > b.min.z;
 }
 
+float axis_min(const BoundingBox& box, int axis) {
+  return axis == 0 ? box.min.x : axis == 1 ? box.min.y : box.min.z;
 }
+
+float axis_max(const BoundingBox& box, int axis) {
+  return axis == 0 ? box.max.x : axis == 1 ? box.max.y : box.max.z;
+}
+
+float& axis_component(Vector3& value, int axis) {
+  return axis == 0 ? value.x : axis == 1 ? value.y : value.z;
+}
+
+bool overlaps_other_axes(const BoundingBox& a, const BoundingBox& b, int axis) {
+  for (int other = 0; other < 3; ++other) {
+    if (other == axis) continue;
+    if (axis_min(a, other) >= axis_max(b, other) ||
+        axis_max(a, other) <= axis_min(b, other)) return false;
+  }
+  return true;
+}
+
+// Enumerate only cells intersecting the given half-open region.
+template<typename Fn>
+void for_cells(const World& world, const BoundingBox& region, Fn&& visit) {
+  const int min_x = std::max(0, static_cast<int>(std::floor(region.min.x)));
+  const int min_y = std::max(0, static_cast<int>(std::floor(region.min.y)));
+  const int min_z = std::max(0, static_cast<int>(std::floor(region.min.z)));
+  const int max_x = std::min(World::width, static_cast<int>(std::ceil(region.max.x)));
+  const int max_y = std::min(World::height, static_cast<int>(std::ceil(region.max.y)));
+  const int max_z = std::min(World::width, static_cast<int>(std::ceil(region.max.z)));
+
+  for (int x = min_x; x < max_x; ++x)
+    for (int y = min_y; y < max_y; ++y)
+      for (int z = min_z; z < max_z; ++z) {
+        const Vector3Int cell{x, y, z};
+        if (world.get(cell) != BlockType::AIR) visit(cell);
+      }
+}
+
+} // namespace
 
 bool WorldPhysics::player_overlaps_block(
-  Vector3Int cell,
-  BlockType block_type,
-  const BoundingBox player_bounds
+  Vector3Int cell, BlockType type, const BoundingBox& player
 ) const {
-  return overlap(
-    player_bounds,
-    Block::bounds(cell, block_type)
-  );
+  return type != BlockType::AIR && overlap(player, Block::bounds(cell, type));
 }
 
-bool WorldPhysics::is_grounded(
-  const BoundingBox player,
-  const std::vector<Vector3Int> &blocks_overlapping_with_player
-) const {
-  // Accept small numerical gaps, but only exposed block TOP faces.
-  constexpr float height_tolerance = 0.04f;
+bool WorldPhysics::is_grounded(const BoundingBox& player) const {
+  constexpr float vertical_tolerance = 0.04f;
   constexpr float edge_tolerance = 0.002f;
 
-  //todo: base this off off collisions and how it changes the y position
-  for (Vector3Int block_pos : blocks_overlapping_with_player) {
-
-    BlockType block_type = world.get(block_pos);
-    if (block_type == BlockType::AIR) {
-      continue;
-    }
-
-    // The top of a block buried beneath another full cube isn't a
-    // walkable surface. This also avoids false jumps at wall seams.
-    if (block_pos.y + 1 < World::height &&
-        world.get(block_pos.x, block_pos.y + 1, block_pos.z) != BlockType::AIR) {
-      continue;
-    }
-
-    const float top = static_cast<float>(block_pos.y + 1);
-    if (std::abs(player.min.y - top) > height_tolerance) {
-      continue;
-    }
-
-    const bool overlaps_x =
-      player.max.x > static_cast<float>(block_pos.x) + edge_tolerance &&
-      player.min.x < static_cast<float>(block_pos.x + 1) - edge_tolerance;
-    const bool overlaps_z =
-      player.max.z > static_cast<float>(block_pos.z) + edge_tolerance &&
-      player.min.z < static_cast<float>(block_pos.z + 1) - edge_tolerance;
-
-    if (overlaps_x && overlaps_z) {
-      return true;
-    }
-  }
-
-  return false;
+  BoundingBox query = player;
+  query.min.y = player.min.y - vertical_tolerance;
+  query.max.y = player.min.y + vertical_tolerance;
+  bool grounded = false;
+  for_cells(world, query, [&](Vector3Int cell) {
+    const BoundingBox block = Block::bounds(cell, world.get(cell));
+    if (std::abs(block.max.y - player.min.y) > vertical_tolerance) return;
+    if (player.max.x <= block.min.x + edge_tolerance ||
+        player.min.x >= block.max.x - edge_tolerance ||
+        player.max.z <= block.min.z + edge_tolerance ||
+        player.min.z >= block.max.z - edge_tolerance) return;
+    grounded = true;
+  });
+  return grounded;
 }
 
 void WorldPhysics::move_player(
-  Vector3& feet,
-  Vector3& velocity,
-  Vector3 size,
-  Vector3 displacement,
-  const std::vector<Vector3Int> &blocks_overlapping_with_player
+  Vector3& feet, Vector3& velocity, Vector3 size, Vector3 displacement
 ) const {
-  // Restore the original axis-separated AABB collision approach:
-  // horizontal motion first, then vertical falling / jumping.
-  // Each axis is resolved against the current world before the next.
-   auto resolve_axis = [&](char axis, float delta) {
-    if (delta == 0.0f) {
-      return;
-    }
+  // X, Z, Y: preserve sliding against a wall while applying gravity last.
+  for (int axis : {0, 2, 1}) {
+    const float delta = axis_component(displacement, axis);
+    if (delta == 0.0f) continue;
 
-    float* coordinate = axis == 'x' ? &feet.x :
-                        axis == 'y' ? &feet.y : &feet.z;
-    *coordinate += delta;
+    const BoundingBox start = player_bounds(feet, size);
+    Vector3 destination_feet = feet;
+    axis_component(destination_feet, axis) += delta;
+    const BoundingBox destination = player_bounds(destination_feet, size);
 
-    for (Vector3Int block_pos : blocks_overlapping_with_player) {
-      BlockType block_type = world.get(block_pos);
-      if (block_type == BlockType::AIR ||
-          !overlap(player_bounds(feet, size), Block::bounds(block_pos, block_type))) {
-        continue;
+    const BoundingBox sweep{
+      {
+        std::min(start.min.x, destination.min.x),
+        std::min(start.min.y, destination.min.y),
+        std::min(start.min.z, destination.min.z)
+      },
+      {
+        std::max(start.max.x, destination.max.x),
+        std::max(start.max.y, destination.max.y),
+        std::max(start.max.z, destination.max.z)
       }
+    };
 
-      if (axis == 'x') {
-        feet.x = delta > 0.0f
-          ? std::min(feet.x, static_cast<float>(block_pos.x) - size.x * 0.5f)
-          : std::max(feet.x, static_cast<float>(block_pos.x + 1) + size.x * 0.5f);
-        velocity.x = 0.0f;
-      } else if (axis == 'z') {
-        feet.z = delta > 0.0f
-          ? std::min(feet.z, static_cast<float>(block_pos.z) - size.z * 0.5f)
-          : std::max(feet.z, static_cast<float>(block_pos.z + 1) + size.z * 0.5f);
-        velocity.z = 0.0f;
-      } else {
-        // Player position is at the feet, not at the body's centre.
-        feet.y = delta > 0.0f
-          ? std::min(feet.y, static_cast<float>(block_pos.y) - size.y)
-          : std::max(feet.y, static_cast<float>(block_pos.y + 1));
-        velocity.y = 0.0f;
+    float allowed = delta;
+    for_cells(world, sweep, [&](Vector3Int cell) {
+      const BoundingBox block = Block::bounds(cell, world.get(cell));
+      if (!overlaps_other_axes(start, block, axis)) return;
+
+      if (delta > 0.0f &&
+          axis_max(start, axis) <= axis_min(block, axis) &&
+          axis_max(destination, axis) > axis_min(block, axis)) {
+        allowed = std::min(allowed, axis_min(block, axis) - axis_max(start, axis));
+      } else if (delta < 0.0f &&
+                 axis_min(start, axis) >= axis_max(block, axis) &&
+                 axis_min(destination, axis) < axis_max(block, axis)) {
+        allowed = std::max(allowed, axis_max(block, axis) - axis_min(start, axis));
       }
-    }
+    });
 
-
-  };
-
-  resolve_axis('x', displacement.x);
-  resolve_axis('z', displacement.z);
-  resolve_axis('y', displacement.y);
+    axis_component(feet, axis) += allowed;
+    if (allowed != delta) axis_component(velocity, axis) = 0.0f;
+  }
 }

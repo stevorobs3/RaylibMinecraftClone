@@ -32,10 +32,7 @@ PlayerController::PlayerController(
     yaw = std::atan2(forward.z, forward.x);
     pitch = std::asin(std::clamp(forward.y / length, -1.0f, 1.0f));
   }
-  grounded = world_physics.is_grounded(
-    bounds(),
-    blocks_overlapping_with_player()
-  );
+  grounded = world_physics.is_grounded(bounds());
   sync_camera();
 }
 
@@ -63,10 +60,7 @@ void PlayerController::reset(Vector3 initial_feet) {
   velocity = {};
   step_accumulator = 0.0f;
   jump_buffer = 0.0f;
-  grounded = world_physics.is_grounded(
-    bounds(),
-    blocks_overlapping_with_player()
-  );
+  grounded = world_physics.is_grounded(bounds());
   // Keep look direction through reset, as in the original game.
   sync_camera();
 }
@@ -99,10 +93,7 @@ void PlayerController::update(
   step_accumulator += std::clamp(frame_dt, 0.0f, 0.1f);
   // todo: redo this to avoid tunneling
   while (step_accumulator >= fixed_dt) {
-    const bool supported = world_physics.is_grounded(
-      bounds(),
-      blocks_overlapping_with_player()
-    );
+    const bool supported = world_physics.is_grounded(bounds());
     float vertical = velocity.y;
     const bool can_jump = supported && vertical <= 0.1f;
 
@@ -124,15 +115,14 @@ void PlayerController::update(
 
     world_physics.move_player(
       feet, velocity, size,
-      {horizontal_velocity.x * fixed_dt, dy, horizontal_velocity.z * fixed_dt},
-      blocks_overlapping_with_player()
+      {horizontal_velocity.x * fixed_dt, dy, horizontal_velocity.z * fixed_dt}
     );
 
     jump_buffer = std::max(0.0f, jump_buffer - fixed_dt);
     step_accumulator -= fixed_dt;
   }
 
-  grounded = world_physics.is_grounded(bounds(), blocks_overlapping_with_player()) && velocity.y <= 0.1f;
+  grounded = world_physics.is_grounded(bounds()) && velocity.y <= 0.1f;
   sync_camera();
 }
 
@@ -147,47 +137,19 @@ BoundingBox PlayerController::bounds() const {
   };
 }
 
-namespace {
-// todo: this needs a lot of testing
-std::vector<int> ints_between(double min, double max, int max_value) {
-  assert(max >= min);
 
-
-  int floor_min = static_cast<int>(min);
-  int floor_max = std::min(static_cast<int>(max), max_value);
-  int count = (floor_max - floor_min) + 1;
-  std::vector<int> ints{};
-  for (int i = floor_min; i <= floor_max; i++) {
-    ints.push_back(i);
-  }
-
-  // add 1 block barrior around player
-  if (floor_min - 1 >= 0)
-    ints.push_back(floor_min - 1);
-  if (floor_max + 1 < max_value)
-    ints.push_back(floor_max + 1);
-
-  return ints;
-}
-}
-
-// todo: this needs a lot of testing!
 std::vector<Vector3Int> PlayerController::blocks_overlapping_with_player() const {
-
-  auto bb = bounds();
-  std::vector<int> x_s = ints_between(bb.min.x, bb.max.x, world.width);
-  std::vector<int> y_s = ints_between(bb.min.y, bb.max.y, world.height);
-  std::vector<int> z_s = ints_between(bb.min.z, bb.max.z, world.width);
-  std::vector<Vector3Int> blocks{};
-
-  for (int x : x_s) {
-    for (int y: y_s) {
-      for (int z: z_s) {
-        Vector3Int pos{x,y,z};
-        if (world.contains(pos))
-          blocks.push_back(pos);
-      }
-    }
-  }
+  const BoundingBox bb = bounds();
+  std::vector<Vector3Int> blocks;
+  const int min_x = std::max(0, static_cast<int>(std::floor(bb.min.x)));
+  const int min_y = std::max(0, static_cast<int>(std::floor(bb.min.y)));
+  const int min_z = std::max(0, static_cast<int>(std::floor(bb.min.z)));
+  const int max_x = std::min(World::width, static_cast<int>(std::ceil(bb.max.x)));
+  const int max_y = std::min(World::height, static_cast<int>(std::ceil(bb.max.y)));
+  const int max_z = std::min(World::width, static_cast<int>(std::ceil(bb.max.z)));
+  for (int x = min_x; x < max_x; ++x)
+    for (int y = min_y; y < max_y; ++y)
+      for (int z = min_z; z < max_z; ++z)
+        blocks.push_back({x, y, z});
   return blocks;
 }

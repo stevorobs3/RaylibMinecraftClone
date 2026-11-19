@@ -1,5 +1,6 @@
 
 #include "world.h"
+#include <stdexcept>
 
 World::World() {
   TraceLog(LOG_INFO, "Creating World");
@@ -40,9 +41,9 @@ void World::initialise() {
         blocks[x,5,z] = BlockType::DIRT;
 
         blocks[x,6,z] = BlockType::GRASS;
-        mark_dirty(i, 0);
       }
     }
+    mark_dirty(i, 0);
   }
 }
 
@@ -60,7 +61,7 @@ bool World::contains(Vector3Int position) const {
 }
 
 BlockType World::get(int x, int y, int z) const {
-  assert(contains({x,y,z}));
+  if (!contains({x,y,z})) throw std::out_of_range("World::get: outside world");
   // todo: use global and local coords with a mdspan wrapper here
   int index = (x / ChunkSection::n) + n * (z / ChunkSection::n);
 
@@ -85,9 +86,8 @@ ChunkSection& World::get_chunk_section(
 }
 
 void World::set(int x, int y, int z, BlockType block_type) {
-  assert(contains({x,y,z}));
-  // avoid unneccessary work
-  assert(get(x,y,z) != block_type);
+  if (!contains({x,y,z})) throw std::out_of_range("World::set: outside world");
+  if (get(x,y,z) == block_type) return;
   int index = (x / ChunkSection::n) + n * (z / ChunkSection::n);
   assert(index >= 0 && index < chunks.size());
   int chunk_section_index = y / ChunkSection::n;

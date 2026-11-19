@@ -3,34 +3,21 @@
 #include <raylib.h>
 #include "world/world.h"
 
-// Minecraft-specific geometry rules for the current full-cube world.
-// No general-purpose physics engine, rigid bodies, or collider ownership.
+// Kinematic, full-block AABB collision rules. No raylib window or GPU needed.
 struct WorldPhysics {
-  explicit WorldPhysics(
-    const World& world
-  ) : world(world) {
-    TraceLog(LOG_INFO, "Creating WorldPhysics");
-  }
+  explicit WorldPhysics(const World& world) : world(world) {}
 
-  bool is_grounded(
-    const BoundingBox player,
-    const std::vector<Vector3Int> &blocks_overlapping_with_player
-  ) const;
+  bool is_grounded(const BoundingBox& player) const;
 
+  // AIR never collides, irrespective of the geometry returned by Block::bounds.
   bool player_overlaps_block(
-    Vector3Int cell,
-    BlockType block_type,
-    const BoundingBox player_bounds
+    Vector3Int cell, BlockType block_type, const BoundingBox& player
   ) const;
 
-  // Resolve the intended displacement one axis at a time, sliding
-  // along walls and cancelling velocity on blocked axes.
+  // Resolve each axis against a swept AABB. The caller does not supply
+  // potentially stale collision candidates.
   void move_player(
-    Vector3& feet,
-    Vector3& velocity,
-    Vector3 size,
-    Vector3 displacement,
-    const std::vector<Vector3Int> &blocks_overlapping_with_player
+    Vector3& feet, Vector3& velocity, Vector3 size, Vector3 displacement
   ) const;
 
 private:
