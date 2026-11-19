@@ -114,6 +114,9 @@ cmake --build build/local-test --target minecraft_tests --parallel 6
 ctest --test-dir build/local-test --output-on-failure
 ```
 
+For convenience on Windows, run `scripts\\run-tests.cmd` from the repository root
+(or supply a build directory as its first argument).
+
 The doctest suite covers world coordinates, chunk identity and lifetime,
 section invalidation, fixed-step updates, player input and manipulation,
 swept AABB collision, face normals, UV/material descriptions, CPU mesh
