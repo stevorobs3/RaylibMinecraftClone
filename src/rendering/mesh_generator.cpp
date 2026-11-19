@@ -10,12 +10,14 @@ namespace {
 
 constexpr int max_vertices = 65536;
 
+// UV2 is a sentinel on faces that have no overlay.
+// One quad can contain both texture samples, so there is
+// no coplanar geometry and no artificial vertex offset.
 void append_quad(
   std::vector<MeshData>& meshes,
   const Quad& quad,
-  const TextureLayer& layer,
-  const TextureAtlas& atlas,
-  bool overlay
+  const FaceAppearance& face,
+  const TextureAtlas& atlas
 ) {
   if (meshes.empty() ||
       meshes.back().vertex_count + 4 > max_vertices) {
@@ -26,18 +28,24 @@ void append_quad(
 
   const unsigned short base =
     static_cast<unsigned short>(mesh.vertex_count);
-  const auto uv = atlas.lookup_texture_uv(layer.texture);
+  const auto base_uv = atlas.lookup_texture_uv(face.base.texture);
 
-  for (int i = 0; i < 4; i++) {
-    Vector3 v = quad.vertices[i];
+  std::array<Vector2, 4> overlay_uv{{
+    {-1.0f, -1.0f}, {-1.0f, -1.0f},
+    {-1.0f, -1.0f}, {-1.0f, -1.0f}
+  }};
 
-    // Keep the overlay in front of its base to avoid z-fighting.
-    if (overlay) {
-      constexpr float offset = 0.001f;
-      v.x += quad.normal.x * offset;
-      v.y += quad.normal.y * offset;
-      v.z += quad.normal.z * offset;
-    }
+  if (face.overlay) {
+    overlay_uv = atlas.lookup_texture_uv(face.overlay->texture);
+  }
+
+  // With two layers, the base is opaque and the tint applies
+  // to the overlay. Without it, tint the base as before.
+  const Color tint = face.overlay
+    ? face.overlay->tint : face.base.tint;
+
+  for (int i = 0; i < Quad::n_vertices; i++) {
+    const Vector3 v = quad.vertices[i];
 
     mesh.vertices.insert(
       mesh.vertices.end(), {v.x, v.y, v.z}
@@ -47,11 +55,11 @@ void append_quad(
       {quad.normal.x, quad.normal.y, quad.normal.z}
     );
     mesh.texcoords.insert(
-      mesh.texcoords.end(), {uv[i].x, uv[i].y}
+      mesh.texcoords.end(), {base_uv[i].x, base_uv[i].y}
     );
-
-    const Color tint = layer.tint;
-
+    mesh.texcoords2.insert(
+      mesh.texcoords2.end(), {overlay_uv[i].x, overlay_uv[i].y}
+    );
     mesh.colors.insert(
       mesh.colors.end(), {tint.r, tint.g, tint.b, tint.a}
     );
@@ -101,13 +109,7 @@ std::vector<MeshData> MeshGenerator::build(
           const Quad quad{type, dir, {x, y, z}};
           const auto face = face_appearance(type, dir);
 
-          append_quad(result, quad, face.base, atlas_, false);
-
-          if (face.overlay) {
-            append_quad(
-              result, quad, *face.overlay, atlas_, true
-            );
-          }
+          append_quad(result, quad, face, atlas_);
         }
       }
     }
@@ -137,16 +139,18 @@ std::optional<Mesh> MeshGenerator::upload(const MeshData& data) {
     return ptr;
   };
 
-  mesh.vertices  = copy(data.vertices);
-  mesh.texcoords = copy(data.texcoords);
-  mesh.normals   = copy(data.normals);
-  mesh.colors    = copy(data.colors);
-  mesh.indices   = copy(data.indices);
+  mesh.vertices   = copy(data.vertices);
+  mesh.texcoords  = copy(data.texcoords);
+  mesh.texcoords2 = copy(data.texcoords2);
+  mesh.normals    = copy(data.normals);
+  mesh.colors     = copy(data.colors);
+  mesh.indices    = copy(data.indices);
 
-  if (!mesh.vertices || !mesh.texcoords || !mesh.normals ||
-      !mesh.colors || !mesh.indices) {
+  if (!mesh.vertices || !mesh.texcoords || !mesh.texcoords2 ||
+      !mesh.normals || !mesh.colors || !mesh.indices) {
     MemFree(mesh.vertices);
     MemFree(mesh.texcoords);
+    MemFree(mesh.texcoords2);
     MemFree(mesh.normals);
     MemFree(mesh.colors);
     MemFree(mesh.indices);

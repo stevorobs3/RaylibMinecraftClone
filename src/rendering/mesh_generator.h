@@ -9,7 +9,7 @@
 #include "texture_atlas.h"
 
 struct MeshData {
-  std::vector<float> vertices, texcoords, normals;
+  std::vector<float> vertices, texcoords, texcoords2, normals;
   std::vector<unsigned char> colors;
   std::vector<unsigned short> indices;
 
@@ -29,6 +29,7 @@ struct MeshData {
 
     if (vertices.size()  != vertices_count * 3 ||
         texcoords.size() != vertices_count * 2 ||
+        texcoords2.size() != vertices_count * 2 ||
         normals.size()   != vertices_count * 3 ||
         colors.size()    != vertices_count * 4 ||
         indices.size()   != triangles_count * 3) {

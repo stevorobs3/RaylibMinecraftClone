@@ -45,8 +45,22 @@ TEST_CASE("Grass block includes a tinted overlay on four sides") {
   world.set(8, 56, 8, BlockType::GRASS);
   auto mesh = generator.build(make_snapshot(world, *section));
   REQUIRE(mesh.size() == 1);
-  CHECK(mesh[0].vertex_count == 40);
-  CHECK(mesh[0].triangle_count == 20);
+  CHECK(mesh[0].vertex_count == 24);
+  CHECK(mesh[0].triangle_count == 12);
+  CHECK(mesh[0].valid());
+
+  // Quad order is EAST, WEST, UP, DOWN, NORTH, SOUTH.
+  // Four side faces use UV2; top and bottom only use UV1.
+  for (int face = 0; face < 6; face++) {
+    const bool has_overlay = face != 2 && face != 3;
+
+    for (int vertex = 0; vertex < 4; vertex++) {
+      const int i = (face * 4 + vertex) * 2;
+      CHECK((mesh[0].texcoords2[i] >= 0.0f) == has_overlay);
+      CHECK((mesh[0].texcoords2[i + 1] >= 0.0f) ==
+            has_overlay);
+    }
+  }
 }
 
 TEST_CASE("Solid section does not emit internal faces") {
@@ -62,7 +76,7 @@ TEST_CASE("Solid section does not emit internal faces") {
 }
 
 TEST_CASE(
-  "Checkerboard with grass overlays splits across the 16-bit index limit"
+  "Checkerboard with composited grass stays within 16-bit indices"
 ) {
   World world;
   TextureAtlas atlas;
@@ -74,7 +88,7 @@ TEST_CASE(
           world.set(x, y, z, BlockType::GRASS);
   const auto* section = world.find_section({{0, 0}, 3});
   const auto meshes   = generator.build(make_snapshot(world, *section));
-  REQUIRE(meshes.size() == 2);
+  REQUIRE(meshes.size() == 1);
   int vertices = 0;
   for (const auto& mesh:meshes) {
     CHECK(mesh.vertex_count <= 65536);
@@ -84,7 +98,7 @@ TEST_CASE(
       CHECK(index < mesh.vertex_count);
     vertices += mesh.vertex_count;
   }
-  CHECK(vertices == 2048*10*4);
+  CHECK(vertices == 2048 * 6 * 4);
 }
 
 TEST_CASE("Malformed mesh buffers fail validation before GPU upload") {
@@ -99,5 +113,9 @@ TEST_CASE("Malformed mesh buffers fail validation before GPU upload") {
   REQUIRE(data.size() == 1);
   CHECK(data[0].valid());
   data[0].vertices.pop_back();
+  CHECK_FALSE(data[0].valid());
+  data[0].vertices.push_back(0.0f);
+  CHECK(data[0].valid());
+  data[0].texcoords2.pop_back();
   CHECK_FALSE(data[0].valid());
 }

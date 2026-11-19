@@ -3,6 +3,7 @@
 #include <utility>
 #include <raylib.h>
 #include "rendering/texture_atlas.h"
+#include "rendering/block_shader.h"
 #include "rendering/chunk_section_mesh.h"
 #include "world/chunk.h"
 
@@ -13,6 +14,7 @@ static_assert(std::is_nothrow_move_constructible_v<OwnedModel>);
 static_assert(!std::is_move_constructible_v<Chunk>);
 static_assert(!std::is_move_constructible_v<ChunkSection>);
 static_assert(!std::is_copy_constructible_v<TextureAtlas>);
+static_assert(!std::is_copy_constructible_v<BlockShader>);
 static_assert(!std::is_copy_constructible_v<ChunkSectionMesh>);
 static_assert(std::is_nothrow_move_constructible_v<ChunkSectionMesh>);
 
