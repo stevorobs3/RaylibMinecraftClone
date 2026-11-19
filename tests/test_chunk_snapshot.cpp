@@ -2,7 +2,9 @@
 #include "rendering/chunk_snapshot.h"
 #include "rendering/world_mesh.h"
 
-TEST_CASE("Snapshot includes neighbours across chunk and section boundaries") {
+TEST_CASE(
+  "Snapshot includes neighbours across chunk and section boundaries"
+) {
   World world;
   world.set(-1, 30, 0, BlockType::STONE);
   world.set(0, 30, 0, BlockType::DIRT);
@@ -13,6 +15,7 @@ TEST_CASE("Snapshot includes neighbours across chunk and section boundaries") {
   CHECK(snapshot.at(16, 14, 0) == BlockType::DIRT);
   CHECK(snapshot.at(-1, 14, 0) == BlockType::AIR); // chunk -2 is unloaded
 }
+
 TEST_CASE("CPU work results are invalidated after edits") {
   World world;
   TextureAtlas atlas;
@@ -27,7 +30,10 @@ TEST_CASE("CPU work results are invalidated after edits") {
   REQUIRE(updated.has_value());
   CHECK(meshes.is_current(*updated));
 }
-TEST_CASE("Chunk generation disambiguates reloads even if the revision repeats") {
+
+TEST_CASE(
+  "Chunk generation disambiguates reloads even if the revision repeats"
+) {
   World world;
   TextureAtlas atlas;
   WorldMesh meshes(world, atlas);

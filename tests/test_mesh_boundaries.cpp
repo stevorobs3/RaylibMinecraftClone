@@ -2,7 +2,9 @@
 #include "rendering/chunk_snapshot.h"
 #include "rendering/mesh_generator.h"
 
-TEST_CASE("Cross-chunk neighbour faces disappear when the next chunk has a block") {
+TEST_CASE(
+  "Cross-chunk neighbour faces disappear when the next chunk has a block"
+) {
   World world;
   TextureAtlas atlas;
   MeshGenerator generator(atlas);

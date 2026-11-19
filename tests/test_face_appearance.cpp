@@ -19,7 +19,10 @@ TEST_CASE("Texture layers are independent of block enum ordering") {
   CHECK(face_appearance(BlockType::STONE, Direction::UP).base.texture ==
     TextureId::Stone);
 }
-TEST_CASE("Texture UV coordinates are normalised without an OpenGL context") {
+
+TEST_CASE(
+  "Texture UV coordinates are normalised without an OpenGL context"
+) {
   const TextureAtlas atlas;
   auto uv = atlas.lookup_texture_uv(TextureId::Dirt);
   CHECK(uv[0].x == doctest::Approx(0));

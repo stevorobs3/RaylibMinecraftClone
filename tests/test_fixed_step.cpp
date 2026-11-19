@@ -1,7 +1,9 @@
 #include "doctest.h"
 #include "fixed_step.h"
 
-TEST_CASE("Fixed-step clock converts elapsed frame time into deterministic ticks") {
+TEST_CASE(
+  "Fixed-step clock converts elapsed frame time into deterministic ticks"
+) {
   FixedStepper clock;
   int ticks   = 0;
   float total = 0;
@@ -13,6 +15,7 @@ TEST_CASE("Fixed-step clock converts elapsed frame time into deterministic ticks
   clock.reset();
   CHECK(clock.accumulator == doctest::Approx(0));
 }
+
 TEST_CASE("Fixed-step clock caps catch-up after a large stall") {
   FixedStepper clock;
   int ticks = 0;

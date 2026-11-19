@@ -12,7 +12,10 @@ TEST_CASE("Empty section produces no geometry") {
   auto result = generator.build(make_snapshot(world, *section));
   CHECK(result.empty());
 }
-TEST_CASE("Single stone and two adjacent stones emit correct exposed faces") {
+
+TEST_CASE(
+  "Single stone and two adjacent stones emit correct exposed faces"
+) {
   World world;
   TextureAtlas atlas;
   MeshGenerator generator(atlas);
@@ -26,13 +29,14 @@ TEST_CASE("Single stone and two adjacent stones emit correct exposed faces") {
   CHECK(one[0].indices.size() == 36);
   CHECK(one[0].valid());
   for (unsigned short index:one[0].indices)
-    CHECK(index<one[0].vertex_count);
+    CHECK(index < one[0].vertex_count);
   world.set(9, 56, 8, BlockType::STONE);
   auto two = generator.build(make_snapshot(world, *section));
   REQUIRE(two.size() == 1);
   CHECK(two[0].vertex_count == 40);
   CHECK(two[0].triangle_count == 20);
 }
+
 TEST_CASE("Grass block includes a tinted overlay on four sides") {
   World world;
   TextureAtlas atlas;
@@ -44,6 +48,7 @@ TEST_CASE("Grass block includes a tinted overlay on four sides") {
   CHECK(mesh[0].vertex_count == 40);
   CHECK(mesh[0].triangle_count == 20);
 }
+
 TEST_CASE("Solid section does not emit internal faces") {
   World world;
   TextureAtlas atlas;
@@ -55,7 +60,10 @@ TEST_CASE("Solid section does not emit internal faces") {
   REQUIRE(mesh.size() == 1);
   CHECK(mesh[0].vertex_count == 6*16*16*4);
 }
-TEST_CASE("Checkerboard with grass overlays splits across the 16-bit index limit") {
+
+TEST_CASE(
+  "Checkerboard with grass overlays splits across the 16-bit index limit"
+) {
   World world;
   TextureAtlas atlas;
   MeshGenerator generator(atlas);
@@ -73,7 +81,7 @@ TEST_CASE("Checkerboard with grass overlays splits across the 16-bit index limit
     CHECK(mesh.indices.size() ==
       static_cast<size_t>(mesh.triangle_count*3));
     for (unsigned short index:mesh.indices)
-      CHECK(index<mesh.vertex_count);
+      CHECK(index < mesh.vertex_count);
     vertices += mesh.vertex_count;
   }
   CHECK(vertices == 2048*10*4);

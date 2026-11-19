@@ -8,7 +8,9 @@ static_assert(!std::is_copy_constructible_v<ChunkSection>);
 static_assert(!std::is_move_constructible_v<ChunkSection>);
 static_assert(std::tuple_size_v<decltype(Chunk::chunk_sections)> == 24);
 
-TEST_CASE("Fixed 24 section array has consistent negative-coordinate origins") {
+TEST_CASE(
+  "Fixed 24 section array has consistent negative-coordinate origins"
+) {
   World world;
   const Chunk* chunk = world.find_chunk({-1, 0});
   REQUIRE(chunk != nullptr);
@@ -17,6 +19,7 @@ TEST_CASE("Fixed 24 section array has consistent negative-coordinate origins") {
   CHECK(chunk->chunk_sections[23].origin == Vector3Int(-16, 368, 0));
   CHECK(chunk->bounds.max.y == 384.0f);
 }
+
 TEST_CASE("Local fill, revision, acknowledgement and bounds") {
   World world;
   auto* s = world.find_section({{0, 0}, 23});
