@@ -1,32 +1,36 @@
 #pragma once
-
+#include <optional>
+#include <unordered_map>
 #include <vector>
-
 #include "world/world.h"
-#include "rendering/chunk_section_mesh.h"
+#include "chunk_section_mesh.h"
+#include "chunk_snapshot.h"
+#include "mesh_generator.h"
 #include "texture_atlas.h"
 
-
+struct MeshBuildResult {
+  SectionCoord section{};
+  std::uint64_t revision=0;
+  std::vector<MeshData> geometry;
+};
 struct WorldMesh {
+  explicit WorldMesh(World& world,const TextureAtlas& atlas) noexcept
+    : world_(world),atlas_(atlas),generator_(atlas) {}
+  WorldMesh(const WorldMesh&)=delete;
+  WorldMesh& operator=(const WorldMesh&)=delete;
 
-  // todo: this should probably handle dirty management
-  // todo: can the world issue an event / callback when a chunk section changes?
-  WorldMesh(World &world, TextureAtlas& texture_atlas);
+  // CPU-only, future worker-safe after snapshot creation.
+  std::optional<MeshBuildResult> prepare_cpu(SectionCoord coord) const;
+  // GPU-only: rejects stale/unloaded section results.
+  bool submit_gpu(MeshBuildResult&& result);
 
-  //todo: handle async things
   void rebuild_dirty_meshes();
-  void unload();
   void rebuild_all_meshes();
-
-  // todo: remove those that are:
-  // 1) outside the camera (frustrum culling)
-  // 2) not within the same air pocket as the camera
-
-  std::vector<ChunkSectionMesh> chunk_section_meshes;
-
+  void unload() noexcept { chunk_section_meshes.clear(); }
+  std::unordered_map<SectionCoord,ChunkSectionMesh,SectionCoordHash> chunk_section_meshes;
 
 private:
-  World &world;
-  TextureAtlas& texture_atlas;
-
+  World& world_;
+  const TextureAtlas& atlas_;
+  MeshGenerator generator_;
 };

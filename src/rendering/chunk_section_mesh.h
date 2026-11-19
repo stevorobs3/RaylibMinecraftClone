@@ -1,29 +1,34 @@
 #pragma once
+#include <vector>
+#include <utility>
+#include <raylib.h>
+#include "mesh_generator.h"
 
-#include <cassert>
-#include <optional>
-
-#include "raylib.h"
-
-#include "rendering/mesh_generator.h"
-
-struct ChunkSectionMesh {
-
-  ChunkSectionMesh(
-    ChunkSection &chunk_section,
-    TextureAtlas &texture_atlas
-  );
-
-  void create_model(Mesh &mesh);
-  void unload();
-  void rebuild_mesh();
-
-  std::optional<Model> model;
-  ChunkSection &chunk_section;
-
+// Exclusive owner of the Model (and its meshes); not its shared atlas texture.
+class OwnedModel {
+public:
+  explicit OwnedModel(Model model) noexcept : model_(model) {}
+  ~OwnedModel() noexcept { UnloadModel(model_); }
+  OwnedModel(const OwnedModel&)=delete;
+  OwnedModel& operator=(const OwnedModel&)=delete;
+  OwnedModel(OwnedModel&& other) noexcept : model_(std::exchange(other.model_,Model{})) {}
+  OwnedModel& operator=(OwnedModel&& other) noexcept {
+    if(this!=&other) {
+      UnloadModel(model_);
+      model_=std::exchange(other.model_,Model{});
+    }
+    return *this;
+  }
+  const Model& get() const noexcept { return model_; }
 private:
-
-  MeshGenerator mesh_generator;
-  TextureAtlas& texture_atlas;
-
+  Model model_{};
+};
+class ChunkSectionMesh {
+public:
+  // All methods in this object access GPU resources: main thread only.
+  bool replace(const std::vector<MeshData>& data,Texture2D atlas_texture);
+  const std::vector<OwnedModel>& models() const noexcept { return models_; }
+  void unload_gpu() noexcept { models_.clear(); }
+private:
+  std::vector<OwnedModel> models_;
 };

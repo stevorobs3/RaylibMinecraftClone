@@ -1,47 +1,20 @@
-
 #include "chunk_section_mesh.h"
 
-ChunkSectionMesh::ChunkSectionMesh(
-  ChunkSection &chunk_section,
-  TextureAtlas &texture_atlas
-): chunk_section(chunk_section),
-   mesh_generator(texture_atlas),
-   texture_atlas(texture_atlas) {}
-
-void ChunkSectionMesh::create_model(Mesh &mesh) {
-  model = LoadModelFromMesh(mesh);
-  model->materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture_atlas.texture;
-}
-
-void ChunkSectionMesh::unload() {
-  if (model) {
-    UnloadModel(*model);
-    model.reset();
-  }
-}
-
-// todo: this is slow and should be done off the main thread -> and some will need to
-// be done on the main thread (uploading to gpu)
-// rebuild the mesh for this chunk
-void ChunkSectionMesh::rebuild_mesh() {
-
-  // todo: is it better to unload the mesh or re-use it in place? (a later optimisation worth considering)
-  std::optional<Mesh> mesh = mesh_generator.from(chunk_section);
-
-  if(!mesh) {
-    if (model) {
-      UnloadModel(*model);
+bool ChunkSectionMesh::replace(const std::vector<MeshData>& data,Texture2D texture) {
+  std::vector<OwnedModel> replacement;
+  replacement.reserve(data.size());
+  for (const MeshData& part : data) {
+    auto mesh=MeshGenerator::upload(part);
+    if(!mesh) return false;
+    // LoadModelFromMesh transfers ownership of the mesh buffers.
+    Model model=LoadModelFromMesh(*mesh);
+    if(!IsModelValid(model)) {
+      UnloadModel(model);
+      return false;
     }
-    model = std::nullopt;
-    return;
+    model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture=texture;
+    replacement.emplace_back(model);
   }
-  if (!model) {
-    create_model(*mesh);
-
-  }
-  else {
-    UnloadMesh(model->meshes[0]);
-    model->meshes[0] = *mesh;
-  }
-
+  models_.swap(replacement); // Old GPU objects released after successful replacement.
+  return true;
 }
