@@ -10,16 +10,19 @@ bool ChunkSectionMesh::replace(const std::vector<MeshData>& data,Texture2D textu
     Model model=LoadModelFromMesh(*mesh);
     if(!model.meshes || !model.materials || !model.meshMaterial ||
        !model.materials[0].maps) {
-      if(model.meshes) UnloadModel(model);
-      else {
-        // raylib could not allocate the Model mesh array; it never took ownership.
+      // Avoid UnloadModel on a partially allocated Model (it assumes
+      // its materials array is usable whenever materialCount > 0).
+      if(model.meshes) {
+        UnloadMesh(model.meshes[0]);
+        MemFree(model.meshes);
+      } else {
         UnloadMesh(*mesh);
-        if(model.materials) {
-          if(model.materials[0].maps) MemFree(model.materials[0].maps);
-          MemFree(model.materials);
-        }
-        MemFree(model.meshMaterial);
       }
+      if(model.materials) {
+        if(model.materials[0].maps) MemFree(model.materials[0].maps);
+        MemFree(model.materials);
+      }
+      MemFree(model.meshMaterial);
       return false;
     }
     model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture=texture;

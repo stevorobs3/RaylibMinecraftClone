@@ -85,7 +85,7 @@ int Game::run()
     });
 
 
-    // todo: off main thread
+    // Milestone 3: move prepare_cpu() to worker threads; submit_gpu() stays here.
     world_mesh.rebuild_dirty_meshes();
 
     BeginDrawing();

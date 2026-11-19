@@ -25,7 +25,6 @@ struct Quad {
   Vector3Int position;
   Vertices vertices{};
   Vector3 normal;
-  Color color;
 
   Quad(
     BlockType block_type,
@@ -39,14 +38,6 @@ struct Quad {
       vertices[i].z = position.z + raw_verts[i].z;
     }
     normal = lookup_normal(direction);
-
-    if (direction == Direction::UP && block_type == BlockType::GRASS) {
-      // todo: not right colour, look this up in grass block
-      color = Color(145, 189, 89,255);
-    }
-    else {
-      color =  WHITE;
-    }
 
   }
 
