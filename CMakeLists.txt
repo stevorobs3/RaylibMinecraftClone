@@ -107,6 +107,8 @@ if(BUILD_TESTING)
         tests/test_chunk_snapshot.cpp
         tests/test_ownership.cpp
         tests/test_fixed_step.cpp
+        tests/test_mesh_boundaries.cpp
+        tests/test_properties.cpp
     )
     target_include_directories(minecraft_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
