@@ -1,35 +1,49 @@
 # Raylib Minecraft Clone
 
-A small voxel sandbox used to study C++23, raylib 6.2 and practical engine architecture.
+A small voxel sandbox used to study C++23, raylib 6.2 and practical engine
+architecture.
 The game currently runs on Windows 10 using MinGW, CMake and OpenGL 3.3.
 
 ## Current development phase
 
 Milestone 1 established a basic collision and geometry test foundation.
-The ongoing PR also incorporates architecture and ownership groundwork for Milestones 2–3.
-**Run the local tests and smoke-test the game before merging this PR.** No hosted CI is configured.
+The ongoing PR also incorporates architecture and ownership groundwork for
+Milestones 2–3.
+**Run the local tests and smoke-test the game before merging this PR.** No
+hosted CI is configured.
 
 ### Milestone 2 — Architecture, correctness and resource ownership
 
 - [x] Use signed `ChunkCoord{x,z}` keys and coordinate-keyed chunk lookup.
-- [x] Keep exactly 24 fixed 16³ `ChunkSection` objects in each non-copyable,
+- [x] Keep exactly 24 fixed 16³ `ChunkSection` objects in each
+      non-copyable,
       non-movable `Chunk` using `std::array`.
-- [x] Centre the initial 2×2 chunk grid around the origin (chunks -1 and 0 on each axis).
+- [x] Centre the initial 2×2 chunk grid around the origin (chunks -1 and 0
+      on each axis).
 - [x] Use floor division/modulo for negative world coordinates.
-- [x] Centralise the fixed-step clock and separate block actions from raylib input.
+- [x] Centralise the fixed-step clock and separate block actions from
+      raylib input.
 - [x] Remove temporary timing code.
 - [x] Separate CPU-only mesh building from GPU upload.
 - [x] Use move-only ownership wrappers for raylib images and models.
 - [x] Support multiple 16-bit-safe indexed submeshes per section.
-- [x] Separate block face materials from atlas coordinates and add grass side overlays.
-- [x] Track section revisions and chunk generations, with stale-result rejection.
-- [x] Use explicit `try_get()` and `SetBlockResult` for normal missing-block cases.
-- [x] Add local unit/regression tests across gameplay logic, world, geometry and ownership.
-- [ ] Validate Windows Debug and Release builds, gameplay and the entire test suite.
-- [ ] Investigate raylib/OpenGL allocation and device failure paths that cannot be
+- [x] Separate block face materials from atlas coordinates and add grass
+      side overlays.
+- [x] Track section revisions and chunk generations, with stale-result
+      rejection.
+- [x] Use explicit `try_get()` and `SetBlockResult` for normal
+      missing-block cases.
+- [x] Add local unit/regression tests across gameplay logic, world,
+      geometry and ownership.
+- [ ] Validate Windows Debug and Release builds, gameplay and the entire
+      test suite.
+- [ ] Investigate raylib/OpenGL allocation and device failure paths that
+      cannot be
       guaranteed recoverable by wrappers alone.
-- [ ] Consider shader-based layered textures and more accurate biome tinting.
-- [ ] Harden the world-edge and initial-overlap physics rules as new block shapes arrive.
+- [ ] Consider shader-based layered textures and more accurate biome
+      tinting.
+- [ ] Harden the world-edge and initial-overlap physics rules as new block
+      shapes arrive.
 
 ### Milestone 3 — Threaded mesh generation
 
@@ -42,27 +56,38 @@ The synchronous `prepare_cpu()` convenience path combines the first two.
 Remaining tasks:
 - [ ] Introduce a bounded worker-thread pool and work queue.
 - [ ] Create immutable section snapshots on the main thread.
-- [ ] Run CPU mesh builds on workers only; do not access live world blocks or raylib GPU APIs there.
+- [ ] Run CPU mesh builds on workers only; do not access live world blocks
+      or raylib GPU APIs there.
 - [ ] Return results through a bounded completion queue.
-- [ ] Reject stale results by checking **both** section revision and chunk generation.
-- [ ] Limit uploads per frame; preserve the old model until a replacement succeeds.
+- [ ] Reject stale results by checking **both** section revision and chunk
+      generation.
+- [ ] Limit uploads per frame; preserve the old model until a replacement
+      succeeds.
 - [ ] Support shutdown, cancellation, unloading and error reporting.
-- [ ] Add deterministic concurrency tests and benchmark with synchronous generation.
+- [ ] Add deterministic concurrency tests and benchmark with synchronous
+      generation.
 
 ### Longer-term backlog
 
-- Dynamic chunk streaming, disk persistence and procedural terrain generation
+- Dynamic chunk streaming, disk persistence and procedural terrain
+  generation
 - Palette-compressed block storage inside the fixed 16³ sections
 - Frustum culling and air-connectivity/occlusion culling
-- Stairs, slabs, transparent materials, liquids and more general collision shapes
-- More faithful Minecraft biome tinting, improved overlay blending and mipmap gutters
-- Better world/chunk debug visuals, texture resources and structured profiling
+- Stairs, slabs, transparent materials, liquids and more general collision
+  shapes
+- More faithful Minecraft biome tinting, improved overlay blending and
+  mipmap gutters
+- Better world/chunk debug visuals, texture resources and structured
+  profiling
 
 ## World API contracts
 
-`World::chunks()` exposes a read-only coordinate-keyed hashmap. A `Chunk` has
-24 fixed vertical sections (total world height 384). Chunk and section objects
-cannot be copied or moved; hashmap rehashing preserves their addresses while
+`World::chunks()` exposes a read-only coordinate-keyed hashmap. A `Chunk`
+has
+24 fixed vertical sections (total world height 384). Chunk and section
+objects
+cannot be copied or moved; hashmap rehashing preserves their addresses
+while
 the chunk remains loaded. **Unloading destroys them**, so no long-lived
 references may escape into render work.
 
@@ -74,7 +99,8 @@ Those return explicit status values and invalidate affected neighbouring
 sections. Raw mutation of section block storage is intentionally private.
 
 The initial world covers x/z in [-16,16), with grass surface at y=6.
-Additional chunks can be explicitly created and unloaded by chunk coordinates.
+Additional chunks can be explicitly created and unloaded by chunk
+coordinates.
 A missing chunk is not automatically generated by a read.
 
 ## Rendering and ownership contracts
@@ -111,12 +137,14 @@ ctest --test-dir build/sublime-Debug --output-on-failure
 Or configure a new Debug build when online or with dependencies cached:
 
 ```cmd
-cmake -S . -B build/local-test -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+cmake -S . -B build/local-test -G Ninja ^
+  -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
 cmake --build build/local-test --target minecraft_tests --parallel 6
 ctest --test-dir build/local-test --output-on-failure
 ```
 
-For convenience on Windows, run `scripts\\run-tests.cmd` from the repository root
+For convenience on Windows, run `scripts\\run-tests.cmd` from the
+repository root
 (or supply a build directory as its first argument).
 
 The doctest suite covers world coordinates, chunk identity and lifetime,

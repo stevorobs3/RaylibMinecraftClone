@@ -60,8 +60,10 @@ Chunk& World::get_or_create_chunk(ChunkCoord coord) {
   if (existing != chunks_.end())
     return existing->second;
 
+  next_generation_++;
+
   auto [it, inserted] = chunks_.try_emplace(
-    coord, coord, ++next_generation_
+    coord, coord, next_generation_
   );
 
   if (inserted) {

@@ -58,7 +58,7 @@ target_link_libraries(minecraft_core PUBLIC
     std::mdspan
 )
 
-# The application supplies only the entry point; everything else is in core.
+# The app supplies only the entry point; everything else is in core.
 add_executable(minecraft_clone src/main.cpp)
 target_link_libraries(minecraft_clone PRIVATE minecraft_core)
 
@@ -71,8 +71,9 @@ target_include_directories(minecraft_clone PRIVATE
 # Faithful textures are static development assets. Copy them once per build
 # directory; the stamp prevents repeating the copy after every relink.
 # Delete assets.stamp to force a refresh after changing source textures.
+set(FAITHFUL_ASSETS "${CMAKE_CURRENT_SOURCE_DIR}/assets/faithful")
 set(BLOCK_TEXTURE_DIR
-    "${CMAKE_CURRENT_SOURCE_DIR}/assets/faithful/assets/minecraft/textures/block"
+    "${FAITHFUL_ASSETS}/assets/minecraft/textures/block"
 )
 if(EXISTS "${BLOCK_TEXTURE_DIR}")
     set(ASSET_STAMP "${CMAKE_CURRENT_BINARY_DIR}/assets.stamp")

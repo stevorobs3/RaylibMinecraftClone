@@ -1,0 +1,19 @@
+# 75-column C++ formatting for narrow displays.
+BasedOnStyle: LLVM
+ColumnLimit: 75
+IndentWidth: 2
+ContinuationIndentWidth: 2
+UseTab: Never
+BreakBeforeBraces: Attach
+SpaceBeforeParens: ControlStatements
+SpaceBeforeAssignmentOperators: true
+PointerAlignment: Left
+ReferenceAlignment: Left
+AlignConsecutiveAssignments: Consecutive
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+BinPackArguments: false
+BinPackParameters: false
+MaxEmptyLinesToKeep: 1
+SortIncludes: Never
