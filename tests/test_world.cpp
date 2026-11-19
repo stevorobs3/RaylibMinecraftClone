@@ -117,9 +117,14 @@ TEST_CASE(
   "block visibility"
 ) {
   World world;
-  for (auto& [coord, chunk] : world.chunks())
-    for (auto& section : chunk.chunk_sections)
-      section.acknowledge(section.revision);
+  for (const auto& [coord, chunk] : world.chunks()) {
+    for (const auto& section : chunk.chunk_sections) {
+      auto* mutable_section = world.find_section(section.coord);
+      REQUIRE(mutable_section != nullptr);
+
+      mutable_section->acknowledge(mutable_section->revision);
+    }
+  }
   REQUIRE(world.unload_chunk({0, 0}));
   CHECK_FALSE(world.is_loaded({0, 0}));
   CHECK_FALSE(world.try_get({0, 7, 0}).has_value());
