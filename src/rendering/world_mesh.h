@@ -24,6 +24,7 @@ struct WorldMesh {
   std::optional<MeshBuildResult> prepare_cpu(SectionCoord coord) const;
   // GPU-only: rejects stale/unloaded section results.
   bool submit_gpu(MeshBuildResult&& result);
+  bool is_current(const MeshBuildResult& result) const noexcept;
 
   void rebuild_dirty_meshes();
   void rebuild_all_meshes();
