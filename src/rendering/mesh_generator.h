@@ -27,11 +27,11 @@ struct MeshData {
     const auto triangles_count =
       static_cast<std::size_t>(triangle_count);
 
-    if (vertices.size() != vertices_count * 3 ||
+    if (vertices.size()  != vertices_count * 3 ||
         texcoords.size() != vertices_count * 2 ||
-        normals.size() != vertices_count * 3 ||
-        colors.size() != vertices_count * 4 ||
-        indices.size() != triangles_count * 3) {
+        normals.size()   != vertices_count * 3 ||
+        colors.size()    != vertices_count * 4 ||
+        indices.size()   != triangles_count * 3) {
       return false;
     }
 

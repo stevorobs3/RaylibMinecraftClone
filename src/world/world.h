@@ -16,7 +16,7 @@ enum class SetBlockResult { Changed, Unchanged, Unloaded, OutOfBounds };
 
 struct World {
   static constexpr int initial_grid_size = 2;
-  static constexpr int height = Chunk::n_sections * ChunkSection::n;
+  static constexpr int height            = Chunk::n_sections * ChunkSection::n;
   static constexpr int chunk_size        = ChunkSection::n;
 
   World();
