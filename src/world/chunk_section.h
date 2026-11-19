@@ -1,84 +1,71 @@
 #pragma once
-
-#include <experimental/mdspan>
+#include <array>
 #include <cassert>
-
-#include "raylib.h"
-#include "raymath.h"
+#include <cstdint>
+#include <experimental/mdspan>
+#include <raylib.h>
 
 #include "block.h"
-#include "rendering/quad.h"
-
-struct World;
-
-using Blocks = std::experimental::mdspan<
-    BlockType,
-    std::experimental::dextents<std::size_t, 3>
-  >;
+#include "coords.h"
 
 using ConstBlocks = std::experimental::mdspan<
-    const BlockType,
-    std::experimental::dextents<std::size_t, 3>
-  >;
+  const BlockType, std::experimental::dextents<std::size_t, 3>
+>;
 
 struct ChunkSection {
-
-  World& world;
-  Vector3 origin;
-  BoundingBox bounds;
   static constexpr int n = 16;
-  static constexpr int blockCount = n * n * n;
+  static constexpr int blockCount = n*n*n;
+  SectionCoord coord{};
+  Vector3Int origin{};
+  BoundingBox bounds{};
 
-  explicit ChunkSection(World& world, Vector3 origin)
-    : world(world), origin(origin),
+  explicit ChunkSection(SectionCoord coord) noexcept
+    : coord(coord),
+      origin{coord.chunk.x*n, coord.y*n, coord.chunk.z*n},
       bounds{
-        origin,
-        origin + Vector3(n, n, n)
-      } {
-        TraceLog(LOG_INFO, std::format("Creating ChunkSection:{}",to_string(origin)).c_str());
-      }
+        Vector3{static_cast<float>(origin.x), static_cast<float>(origin.y), static_cast<float>(origin.z)},
+        Vector3{static_cast<float>(origin.x+n), static_cast<float>(origin.y+n), static_cast<float>(origin.z+n)}
+      } {}
 
-  // todo: explicitly disallow copying and moving
-  // ChunkSection(const ChunkSection &chunk_section) = delete;
-  // ChunkSection(ChunkSection &&chunk_section) = delete;
-  // ChunkSection& operator=(const ChunkSection &chunk_section) = delete;
-  // ChunkSection& operator=(ChunkSection &&chunk_section) = delete;
+  ChunkSection(const ChunkSection&) = delete;
+  ChunkSection& operator=(const ChunkSection&) = delete;
+  ChunkSection(ChunkSection&&) = delete;
+  ChunkSection& operator=(ChunkSection&&) = delete;
 
-
-  Blocks blocks() {
-    return Blocks(storage.data(), n, n, n);
+  ConstBlocks const_blocks() const noexcept {
+    return ConstBlocks(storage.data(), n,n,n);
   }
-
-  ConstBlocks const_blocks() const {
-    return ConstBlocks(storage.data(), n, n, n);
+  bool contains(Vector3Int p) const noexcept {
+    return p.x>=0 && p.x<n && p.y>=0 && p.y<n && p.z>=0 && p.z<n;
   }
-
-  bool fill(BlockType block_type) {
-    bool dirty = false;
-    for (BlockType & stored_type : storage) {
-      if (stored_type != block_type)
-        dirty = true;
+  BlockType get_local(Vector3Int p) const noexcept {
+    assert(contains(p));
+    return const_blocks()[p.x,p.y,p.z];
+  }
+  // Mutations invalidate the section; World additionally invalidates neighbours.
+  bool set_local(Vector3Int p, BlockType type) noexcept {
+    assert(contains(p));
+    const std::size_t i = (static_cast<std::size_t>(p.x)*n + p.y)*n + p.z;
+    if (storage[i] == type) return false;
+    storage[i] = type;
+    mark_dirty();
+    return true;
+  }
+  bool fill(BlockType type) noexcept {
+    bool changed = false;
+    for (auto& block : storage) {
+      if (block != type) { block=type; changed=true; }
     }
-    storage.fill(block_type);
-    return dirty;
+    if (changed) mark_dirty();
+    return changed;
   }
-
-  bool contains(Vector3Int position) const {
-    return position.x >= 0 && position.x < ChunkSection::n &&
-      position.y >= 0 && position.y < ChunkSection::n &&
-      position.z >= 0 && position.z < ChunkSection::n;
+  void mark_dirty() noexcept { dirty = true; ++revision; }
+  void acknowledge(std::uint64_t version) noexcept {
+    if (revision == version) dirty = false;
   }
-
-  BlockType internal_neighbour(Direction dir, Vector3Int local_position) const {
-    assert(contains(local_position));
-    auto neighbour_pos = local_position + Vector3Int{static_cast<int>(Quad::lookup_normal(dir).x), static_cast<int>(Quad::lookup_normal(dir).y), static_cast<int>(Quad::lookup_normal(dir).z)};
-    assert(contains(neighbour_pos));
-    return const_blocks()[neighbour_pos.x,neighbour_pos.y,neighbour_pos.z];
-  }
+  bool dirty = true;
+  std::uint64_t revision = 1;
 
 private:
-  // todo: packedArray based on palette
-  std::array<BlockType, blockCount> storage{};
-
+  std::array<BlockType,blockCount> storage{};
 };
-

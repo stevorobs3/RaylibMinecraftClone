@@ -1,53 +1,36 @@
 #pragma once
-
-#include <vector>
-
-#include "raylib.h"
-
+#include <array>
+#include <utility>
+#include <raylib.h>
 #include "chunk_section.h"
 
-struct World;
-
 struct Chunk {
+  static constexpr int n_sections = 24;
+  ChunkCoord coord{};
+  Vector3Int origin{};
+  BoundingBox bounds{};
+  std::array<ChunkSection,n_sections> chunk_sections;
 
-  World &world;
-  Vector3 origin;
-  BoundingBox bounds;
+  explicit Chunk(ChunkCoord coord)
+    : coord(coord),
+      origin{coord.x*ChunkSection::n,0,coord.z*ChunkSection::n},
+      bounds{
+        Vector3{static_cast<float>(origin.x),0,static_cast<float>(origin.z)},
+        Vector3{static_cast<float>(origin.x+ChunkSection::n),
+                static_cast<float>(n_sections*ChunkSection::n),
+                static_cast<float>(origin.z+ChunkSection::n)}
+      },
+      chunk_sections(make_sections(coord,std::make_index_sequence<n_sections>{})) {}
 
+  Chunk(const Chunk&) = delete;
+  Chunk& operator=(const Chunk&) = delete;
+  Chunk(Chunk&&) = delete;
+  Chunk& operator=(Chunk&&) = delete;
 
-  Chunk(World& world, Vector3 origin) : world(world), origin(origin) {
-    TraceLog(LOG_INFO, std::format("Creating Chunk:{}",to_string(origin)).c_str());
-    chunk_sections.reserve(n_sections);
-    for (int i = 0; i < n_sections; i++) {
-      chunk_sections.emplace_back(
-        world, origin + Vector3(0, ChunkSection::n * i, 0)
-      );
-    }
-    bounds = {
-      origin,
-      origin + Vector3(ChunkSection::n, n_sections*ChunkSection::n, ChunkSection::n)
-    };
+private:
+  template<std::size_t... I>
+  static std::array<ChunkSection,n_sections>
+  make_sections(ChunkCoord c, std::index_sequence<I...>) {
+    return {{ChunkSection{SectionCoord{c,static_cast<int>(I)}}...}};
   }
-
-  // todo: explicitly disallow copying and moving
-  // Chunk(const Chunk &chunk) = delete;
-  // Chunk(Chunk &&chunk) = delete;
-  // Chunk& operator=(const Chunk &chunk) = delete;
-  // Chunk& operator=(Chunk &&chunk) = delete;
-
-  // returns the indexes of the sections that are now dirty
-  std::vector<int> fill(BlockType block_type) {
-    std::vector<int> dirty{};
-    for (int i = 0; i < chunk_sections.size(); i++) {
-      ChunkSection & chunk_section = chunk_sections[i];
-      if (chunk_section.fill(block_type)) {
-        dirty.push_back(i);
-      }
-    }
-    return dirty;
-  }
-
-  static constexpr int n_sections = 4;
-  std::vector<ChunkSection> chunk_sections;
-
 };

@@ -1,95 +1,64 @@
 #pragma once
-
-#include <cmath>
-#include <vector>
 #include <cassert>
-#include <unordered_set>
-
-#include "raylib.h"
-#include "vector.h"
+#include <cmath>
+#include <optional>
+#include <unordered_map>
+#include <vector>
+#include <raylib.h>
 
 #include "block.h"
-#include "chunk_section.h"
 #include "chunk.h"
+#include "coords.h"
+#include "vector.h"
 
-
-// todo: this currently holds the responsibility of
-// marking chunk sections as dirty. Not sure if this is the right
-// place for that longer term
+enum class SetBlockResult { Changed, Unchanged, Unloaded, OutOfBounds };
 
 struct World {
-
-	World();
-
-	// explicitly disallow copying and moving
-	World(const World &world) = delete;
-	World(World &&world) = delete;
-	World& operator=(const World &world) = delete;
-	World& operator=(World &&world) = delete;
-
-
-	void initialise();
-
-  void mark_dirty(int chunk_index, int chunk_section_index);
-
-	bool contains(Vector3Int position) const;
-
-  BlockType get(int x, int y, int z) const;
-
-  BlockType get(Vector3Int pos) const {
-    return get(pos.x,pos.y,pos.z);
-  }
-
-  ChunkSection& get_chunk_section(
-    int chunk_index,
-    int chunk_section_index
-  );
-
-
-  void set(int x, int y, int z, BlockType block_type);
-
-  void set(Vector3Int pos, BlockType block_type) {
-    set(pos.x,pos.y,pos.z, block_type);
-  }
-
-  Vector3Int to_grid_position(Vector3 vec3) const {
-    // todo: handle negative ranges too
-    return Vector3Int(
-      std::floor(vec3.x),
-      std::floor(vec3.y),
-      std::floor(vec3.z)
-    );
-  }
-
-  std::vector<Vector3Int> positions_within_range(
-    Vector3 origin,
-    int range
-  ) const;
-
-  static constexpr int n = 2;
-  static constexpr int num_chunks = n * n;
-
+  static constexpr int initial_grid_size = 2;
   static constexpr int height = Chunk::n_sections * ChunkSection::n;
-  static constexpr int width =  ChunkSection::n * n;
-  static constexpr int block_count = width * width * height;
+  static constexpr int chunk_size = ChunkSection::n;
 
-  static constexpr BoundingBox bounds{
-    {0, 0, 0},
-    {width, height, width}
-  };
+  World();
+  World(const World&) = delete;
+  World& operator=(const World&) = delete;
+  World(World&&) = delete;
+  World& operator=(World&&) = delete;
 
-  struct IntPairHash {
-    std::size_t operator()(const std::pair<int,int> & index) const {
-      auto h1 = std::hash<int>{}(index.first);
-      auto h2 = std::hash<int>{}(index.second);
-      return h1 ^ (h2 << 1);
-    }
-  };
+  void initialise();
+  bool contains(Vector3Int pos) const noexcept;
+  bool is_loaded(ChunkCoord coord) const noexcept;
+  Chunk* find_chunk(ChunkCoord coord) noexcept;
+  const Chunk* find_chunk(ChunkCoord coord) const noexcept;
+  Chunk& get_or_create_chunk(ChunkCoord coord); // may allocate
+  ChunkSection* find_section(SectionCoord coord) noexcept;
+  const ChunkSection* find_section(SectionCoord coord) const noexcept;
 
+  std::optional<BlockType> try_get(Vector3Int pos) const noexcept;
+  BlockType get(Vector3Int pos) const noexcept {
+    auto result=try_get(pos);
+    assert(result.has_value());
+    return *result;
+  }
+  BlockType get(int x,int y,int z) const noexcept { return get({x,y,z}); }
 
-  std::unordered_set<std::pair<int,int>,IntPairHash> dirty_chunk_sections;
+  SetBlockResult set(Vector3Int pos,BlockType type) noexcept;
+  SetBlockResult set(int x,int y,int z,BlockType type) noexcept {
+    return set({x,y,z},type);
+  }
+  void mark_dirty(SectionCoord coord) noexcept;
 
-  // number of chunks per x / z direction
-  std::vector<Chunk> chunks;
+  static constexpr ChunkCoord to_chunk_coord(Vector3Int pos) noexcept {
+    return {floor_div(pos.x,chunk_size),floor_div(pos.z,chunk_size)};
+  }
+  static constexpr Vector3Int to_local_position(Vector3Int pos) noexcept {
+    return {floor_mod(pos.x,chunk_size), floor_mod(pos.y,chunk_size), floor_mod(pos.z,chunk_size)};
+  }
+  static Vector3Int to_grid_position(Vector3 vec3) noexcept {
+    return {static_cast<int>(std::floor(vec3.x)),
+            static_cast<int>(std::floor(vec3.y)),
+            static_cast<int>(std::floor(vec3.z))};
+  }
+  std::vector<Vector3Int> positions_within_range(Vector3 origin,int range) const;
 
+  std::unordered_map<ChunkCoord,Chunk,ChunkCoordHash> chunks;
 };
