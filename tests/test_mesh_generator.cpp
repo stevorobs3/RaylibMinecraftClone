@@ -1,46 +1,76 @@
 #include "doctest.h"
 #include "rendering/mesh_generator.h"
+#include "rendering/chunk_snapshot.h"
+#include <numeric>
 
-TEST_CASE("Air-only section yields no geometry") {
+TEST_CASE("Empty section produces no geometry") {
   World world;
-  world.get_chunk_section(0, 3).fill(BlockType::AIR);
   TextureAtlas atlas;
-  // UV lookup only needs the atlas dimensions, not an OpenGL texture.
-  atlas.texture.width = 192;
-  atlas.texture.height = 192;
   MeshGenerator generator(atlas);
-  CHECK_FALSE(generator.build(world.get_chunk_section(0, 3)).has_value());
+  auto* section=world.find_section({{0,0},3});
+  REQUIRE(section!=nullptr);
+  auto result=generator.build(make_snapshot(world,*section));
+  CHECK(result.empty());
 }
-
-TEST_CASE("Isolated full block emits six faces and valid indices") {
+TEST_CASE("Single stone and two adjacent stones emit correct exposed faces") {
   World world;
-  auto& section = world.get_chunk_section(0, 3);
-  section.fill(BlockType::AIR);
-  section.blocks()[8,8,8] = BlockType::STONE;
   TextureAtlas atlas;
-  atlas.texture.width = 192;
-  atlas.texture.height = 192;
   MeshGenerator generator(atlas);
-  auto mesh = generator.build(section);
-  REQUIRE(mesh.has_value());
-  CHECK(mesh->vertex_count == 24);
-  CHECK(mesh->triangle_count == 12);
-  CHECK(mesh->indices.size() == 36);
-  for (unsigned short index : mesh->indices) CHECK(index < mesh->vertex_count);
+  auto* section=world.find_section({{0,0},3});
+  REQUIRE(section!=nullptr);
+  world.set(8,56,8,BlockType::STONE);
+  auto one=generator.build(make_snapshot(world,*section));
+  REQUIRE(one.size()==1);
+  CHECK(one[0].vertex_count==24);
+  CHECK(one[0].triangle_count==12);
+  CHECK(one[0].indices.size()==36);
+  for(unsigned short index:one[0].indices)
+    CHECK(index<one[0].vertex_count);
+  world.set(9,56,8,BlockType::STONE);
+  auto two=generator.build(make_snapshot(world,*section));
+  REQUIRE(two.size()==1);
+  CHECK(two[0].vertex_count==40);
+  CHECK(two[0].triangle_count==20);
 }
-
-TEST_CASE("Adjacent full blocks hide their shared face") {
+TEST_CASE("Grass block includes a tinted overlay on four sides") {
   World world;
-  auto& section = world.get_chunk_section(0, 3);
-  section.fill(BlockType::AIR);
-  section.blocks()[8,8,8] = BlockType::STONE;
-  section.blocks()[9,8,8] = BlockType::STONE;
   TextureAtlas atlas;
-  atlas.texture.width = 192;
-  atlas.texture.height = 192;
   MeshGenerator generator(atlas);
-  auto mesh = generator.build(section);
-  REQUIRE(mesh.has_value());
-  CHECK(mesh->vertex_count == 40);
-  CHECK(mesh->triangle_count == 20);
+  auto* section=world.find_section({{0,0},3});
+  world.set(8,56,8,BlockType::GRASS);
+  auto mesh=generator.build(make_snapshot(world,*section));
+  REQUIRE(mesh.size()==1);
+  CHECK(mesh[0].vertex_count==40);
+  CHECK(mesh[0].triangle_count==20);
+}
+TEST_CASE("Solid section does not emit internal faces") {
+  World world;
+  TextureAtlas atlas;
+  MeshGenerator generator(atlas);
+  auto* section=world.find_section({{0,0},3});
+  REQUIRE(section!=nullptr);
+  section->fill(BlockType::STONE);
+  const auto mesh=generator.build(make_snapshot(world,*section));
+  REQUIRE(mesh.size()==1);
+  CHECK(mesh[0].vertex_count==6*16*16*4);
+}
+TEST_CASE("Checkerboard with grass overlays splits across the 16-bit index limit") {
+  World world;
+  TextureAtlas atlas;
+  MeshGenerator generator(atlas);
+  for(int x=0;x<16;++x)
+    for(int y=48;y<64;++y)
+      for(int z=0;z<16;++z)
+        if((x+y+z)%2==0) world.set(x,y,z,BlockType::GRASS);
+  const auto* section=world.find_section({{0,0},3});
+  const auto meshes=generator.build(make_snapshot(world,*section));
+  REQUIRE(meshes.size()==2);
+  int vertices=0;
+  for(const auto& mesh:meshes) {
+    CHECK(mesh.vertex_count<=65536);
+    CHECK(mesh.indices.size()==static_cast<size_t>(mesh.triangle_count*3));
+    for(unsigned short index:mesh.indices) CHECK(index<mesh.vertex_count);
+    vertices+=mesh.vertex_count;
+  }
+  CHECK(vertices==2048*10*4);
 }
