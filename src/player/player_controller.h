@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "vector.h"
-#include "world/world.h"
 
 struct WorldPhysics;
 
@@ -24,7 +23,6 @@ struct PlayerController {
 
 
   PlayerController(
-    const World &world,
     const WorldPhysics &world_physics,
     Camera3D &camera,
     Vector3 feet,
@@ -46,7 +44,6 @@ private:
   void sync_camera();
 
   Vector3 size{};
-  const World &world;
   const WorldPhysics &world_physics;
   Camera3D &camera;
   float yaw = 0.0f;

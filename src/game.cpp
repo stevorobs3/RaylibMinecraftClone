@@ -28,7 +28,7 @@ Game::Game()
     .projection = CAMERA_PERSPECTIVE
   },
   physics(world),
-  controller(world, physics, camera, player_initial_position, player_size),
+  controller(physics, camera, player_initial_position, player_size),
   world_mesh(world, texture_atlas),
   renderer(world, world_mesh, player, controller)
    {

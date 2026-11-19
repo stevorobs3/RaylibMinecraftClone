@@ -9,13 +9,11 @@
 #include <numbers>
 
 PlayerController::PlayerController(
-  const World &world,
   const WorldPhysics &world_physics,
   Camera3D &camera,
   Vector3 feet,
   Vector3 size
-) : world(world),
-  world_physics(world_physics),
+) : world_physics(world_physics),
   feet(feet),
   size(size),
   camera(camera) {
