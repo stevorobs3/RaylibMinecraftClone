@@ -16,7 +16,8 @@ enum class BlockType: uint8_t {
 struct Block {
 
   //todo: handle non full blocks
-  static BoundingBox bounds(Vector3Int position, [[maybe_unused]] BlockType block_type) noexcept {
+  static BoundingBox bounds(Vector3Int position, [[maybe_unused]]
+    BlockType block_type) noexcept {
     return BoundingBox{
       .min = {
         static_cast<float>(position.x),
