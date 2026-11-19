@@ -33,6 +33,7 @@ in vec4 fragTint;
 
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
+uniform float overlayAlphaCutoff;
 
 out vec4 finalColor;
 
@@ -44,10 +45,12 @@ void main()
     {
         vec4 overlay = texture(texture0, fragOverlayCoord);
 
-        // A grass side has an opaque base under the overlay.
-        // Composite once, then write one colour and depth.
-        vec3 overlayRgb = overlay.rgb * fragTint.rgb;
-        vec3 rgb = mix(base.rgb, overlayRgb, overlay.a);
+        // Grass uses a binary alpha cutout, not blending.
+        // A present overlay pixel entirely replaces the base.
+        vec3 rgb = overlay.a >= overlayAlphaCutoff
+            ? overlay.rgb * fragTint.rgb
+            : base.rgb;
+
         finalColor = vec4(rgb, base.a) * colDiffuse;
     }
     else
@@ -69,13 +72,23 @@ bool BlockShader::load() {
   if (!IsShaderValid(loaded) ||
       GetShaderLocationAttrib(loaded, "vertexTexCoord2") < 0 ||
       GetShaderLocation(loaded, "texture0") < 0 ||
-      GetShaderLocation(loaded, "mvp") < 0) {
+      GetShaderLocation(loaded, "mvp") < 0 ||
+      GetShaderLocation(loaded, "overlayAlphaCutoff") < 0) {
     if (loaded.locs)
       UnloadShader(loaded);
 
     TraceLog(LOG_ERROR, "Layered block shader failed to load");
     return false;
   }
+
+  const int cutoff_location = GetShaderLocation(
+    loaded, "overlayAlphaCutoff"
+  );
+  const float cutoff = BlockOverlay::alpha_cutoff;
+
+  SetShaderValue(
+    loaded, cutoff_location, &cutoff, SHADER_UNIFORM_FLOAT
+  );
 
   unload();
   shader_ = loaded;

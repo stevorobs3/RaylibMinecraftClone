@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "rendering/face_appearance.h"
 #include "rendering/texture_atlas.h"
+#include "rendering/block_shader.h"
 
 TEST_CASE("Texture layers are independent of block enum ordering") {
   auto grass_top = face_appearance(BlockType::GRASS, Direction::UP);
@@ -36,4 +37,15 @@ TEST_CASE(
     CHECK(p.x >= 0); CHECK(p.x <= 1);
     CHECK(p.y >= 0); CHECK(p.y <= 1);
   }
+}
+
+TEST_CASE("Overlay alpha cutout never uses partial blending") {
+  // Samples on opposite sides of the threshold select whole
+  // layers, rather than blending base and overlay RGB values.
+  CHECK_FALSE(BlockOverlay::visible(0.0f));
+  CHECK_FALSE(BlockOverlay::visible(0.01f));
+  CHECK_FALSE(BlockOverlay::visible(0.49f));
+  CHECK(BlockOverlay::visible(0.5f));
+  CHECK(BlockOverlay::visible(0.51f));
+  CHECK(BlockOverlay::visible(1.0f));
 }

@@ -119,8 +119,9 @@ lifetime must encompass all GPU resource destructors.
 Mesh vertices have 16-bit indices; the generator splits at 65,536 vertices
 (16,384 quads) per raylib mesh. Grass side overlays use a *single quad*
 with two UV channels. The custom OpenGL 3.3 shader samples both textures
-from the atlas and blends the tinted overlay over an opaque base in one
-fragment, eliminating offset-quad seams and Z-fighting. This is not a
+from the atlas and selects the tinted overlay when its sampled alpha
+passes a configurable 0.5 cutout threshold. Otherwise it shows the base.
+No partial colour blending, offset-quad seams or Z-fighting. This is not a
 general-purpose translucent-block rendering pipeline. The shader is
 owned by Game and borrowed by Models. Unloaded neighbours are treated
 as air for meshing.
