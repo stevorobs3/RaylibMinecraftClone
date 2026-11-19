@@ -34,8 +34,8 @@ hosted CI is configured.
 - [x] Separate CPU-only mesh building from GPU upload.
 - [x] Use move-only ownership wrappers for raylib images and models.
 - [x] Support multiple 16-bit-safe indexed submeshes per section.
-- [x] Separate block face materials from atlas coordinates and add grass
-      side overlays.
+- [x] Separate block face materials from atlas coordinates and blend
+      biome-tinted grass side overlays on one quad in a custom shader.
 - [x] Track section revisions and chunk generations, with stale-result
       rejection.
 - [x] Use explicit `try_get()` and `SetBlockResult` for normal
@@ -46,8 +46,8 @@ hosted CI is configured.
       test suite.
 - [ ] Investigate raylib/OpenGL allocation and device failure paths that
       cannot be guaranteed recoverable by wrappers alone.
-- [ ] Consider shader-based layered textures and more accurate biome
-      tinting.
+- [ ] Add configurable per-biome grass colours and more faithful
+      overlay tinting.
 - [ ] Harden the world-edge and initial-overlap physics rules as new block
       shapes arrive.
 
@@ -117,9 +117,13 @@ draw/upload/unload GPU models off the graphics thread. The window's
 lifetime must encompass all GPU resource destructors.
 
 Mesh vertices have 16-bit indices; the generator splits at 65,536 vertices
-(16,384 quads) per raylib mesh. Grass side overlays add a second slightly
-offset quad and are currently a simple baseline, not a fully transparent
-rendering pipeline. Unloaded neighbours are treated as air for meshing.
+(16,384 quads) per raylib mesh. Grass side overlays use a *single quad*
+with two UV channels. The custom OpenGL 3.3 shader samples both textures
+from the atlas and blends the tinted overlay over an opaque base in one
+fragment, eliminating offset-quad seams and Z-fighting. This is not a
+general-purpose translucent-block rendering pipeline. The shader is
+owned by Game and borrowed by Models. Unloaded neighbours are treated
+as air for meshing.
 
 Memory allocation in standard C++ containers can throw `std::bad_alloc`.
 The game catches ordinary `std::exception` at its outer boundary, after
@@ -158,7 +162,8 @@ loading and visual layering also require **manual runtime smoke tests** .
 Manual checks after pulling: moving across x/z=0, jumping, falling onto
 terrain, wall sliding and collisions at negative positions; breaking and
 placing blocks at chunk and section boundaries; reset; grass tint and
-overlay transparency; and repeated mesh/model rebuilds.
+overlay tint and borders from both near and far; and repeated
+mesh/model rebuilds.
 
 **Development asset note:** the `assets/` directory is gitignored. To run
 the game, provide the Faithful block PNGs listed in

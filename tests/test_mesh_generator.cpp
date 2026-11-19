@@ -28,6 +28,8 @@ TEST_CASE(
   CHECK(one[0].triangle_count == 12);
   CHECK(one[0].indices.size() == 36);
   CHECK(one[0].valid());
+  CHECK(one[0].texcoords2.size() == 48);
+  CHECK(one[0].texcoords2[0] == -1.0f);
   for (unsigned short index:one[0].indices)
     CHECK(index < one[0].vertex_count);
   world.set(9, 56, 8, BlockType::STONE);
@@ -49,6 +51,9 @@ TEST_CASE("Grass block includes a tinted overlay on four sides") {
   CHECK(mesh[0].triangle_count == 12);
   CHECK(mesh[0].valid());
 
+  // The same number of quads as an ordinary full cube.
+  CHECK(mesh[0].indices.size() == 36);
+
   // Quad order is EAST, WEST, UP, DOWN, NORTH, SOUTH.
   // Four side faces use UV2; top and bottom only use UV1.
   for (int face = 0; face < 6; face++) {
@@ -59,6 +64,16 @@ TEST_CASE("Grass block includes a tinted overlay on four sides") {
       CHECK((mesh[0].texcoords2[i] >= 0.0f) == has_overlay);
       CHECK((mesh[0].texcoords2[i + 1] >= 0.0f) ==
             has_overlay);
+
+      if (has_overlay) {
+        const auto uv = atlas.lookup_texture_uv(
+          TextureId::GrassSideOverlay
+        );
+        CHECK(mesh[0].texcoords2[i] ==
+              doctest::Approx(uv[vertex].x));
+        CHECK(mesh[0].texcoords2[i + 1] ==
+              doctest::Approx(uv[vertex].y));
+      }
     }
   }
 }

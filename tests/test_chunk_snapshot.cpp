@@ -19,7 +19,8 @@ TEST_CASE(
 TEST_CASE("CPU work results are invalidated after edits") {
   World world;
   TextureAtlas atlas;
-  WorldMesh meshes(world, atlas);
+  BlockShader shader;
+  WorldMesh meshes(world, atlas, shader);
   const SectionCoord coord{{0, 0}, 2};
   auto built = meshes.prepare_cpu(coord);
   REQUIRE(built.has_value());
@@ -36,7 +37,8 @@ TEST_CASE(
 ) {
   World world;
   TextureAtlas atlas;
-  WorldMesh meshes(world, atlas);
+  BlockShader shader;
+  WorldMesh meshes(world, atlas, shader);
   const SectionCoord coord{{0, 0}, 3};
   auto old = meshes.prepare_cpu(coord);
   REQUIRE(old.has_value());
@@ -50,7 +52,8 @@ TEST_CASE(
 TEST_CASE("Captured mesh jobs remain immutable after world edits") {
   World world;
   TextureAtlas atlas;
-  WorldMesh mesh(world, atlas);
+  BlockShader shader;
+  WorldMesh mesh(world, atlas, shader);
   const SectionCoord coord{{0, 0}, 3};
   auto request = mesh.capture_snapshot(coord);
   REQUIRE(request.has_value());
