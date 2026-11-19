@@ -30,28 +30,34 @@ float& axis_component(Vector3& value, int axis) {
   return axis == 0 ? value.x : axis == 1 ? value.y : value.z;
 }
 
-bool overlaps_other_axes(const BoundingBox& a, const BoundingBox& b,
-  int axis) {
+bool overlaps_other_axes(
+  const BoundingBox& a, const BoundingBox& b, int axis
+) {
   for (int other = 0; other < 3; other++) {
     if (other == axis)
       continue;
     if (axis_min(a, other) >= axis_max(b, other) ||
-        axis_max(a, other) <= axis_min(b, other)) return false;
+        axis_max(a, other) <= axis_min(b, other)) {
+      return false;
+    }
   }
   return true;
 }
 
 // Enumerate only cells intersecting the given half-open region.
 template<typename Fn>
-void for_cells(const World& world, const BoundingBox& region, Fn &&
-  visit) {
+void for_cells(
+  const World& world, const BoundingBox& region, Fn&& visit
+) {
   const int min_x = static_cast<int>(std::floor(region.min.x));
-  const int min_y = std::max(0,
-    static_cast<int>(std::floor(region.min.y)));
+  const int min_y = std::max(
+    0, static_cast<int>(std::floor(region.min.y))
+  );
   const int min_z = static_cast<int>(std::floor(region.min.z));
   const int max_x = static_cast<int>(std::ceil(region.max.x));
-  const int max_y = std::min(World::height,
-    static_cast<int>(std::ceil(region.max.y)));
+  const int max_y = std::min(
+    World::height, static_cast<int>(std::ceil(region.max.y))
+  );
   const int max_z = static_cast<int>(std::ceil(region.max.z));
 
   for (int x = min_x; x < max_x; x++)
@@ -68,8 +74,8 @@ void for_cells(const World& world, const BoundingBox& region, Fn &&
 bool WorldPhysics::player_overlaps_block(
   Vector3Int cell, BlockType type, const BoundingBox& player
 ) const {
-  return type != BlockType::AIR && overlap(player, Block::bounds(cell,
-    type));
+  return type != BlockType::AIR &&
+         overlap(player, Block::bounds(cell, type));
 }
 
 bool WorldPhysics::is_grounded(const BoundingBox& player) const {
@@ -87,7 +93,9 @@ bool WorldPhysics::is_grounded(const BoundingBox& player) const {
     if (player.max.x <= block.min.x + edge_tolerance ||
         player.min.x >= block.max.x - edge_tolerance ||
         player.max.z <= block.min.z + edge_tolerance ||
-        player.min.z >= block.max.z - edge_tolerance) return;
+        player.min.z >= block.max.z - edge_tolerance) {
+      return;
+    }
     grounded = true;
   });
   return grounded;
@@ -129,18 +137,20 @@ void WorldPhysics::move_player(
       if (delta > 0.0f &&
           axis_max(start, axis) <= axis_min(block, axis) &&
           axis_max(destination, axis) > axis_min(block, axis)) {
-        allowed = std::min(allowed, axis_min(block,
-          axis) - axis_max(start, axis));
+        allowed = std::min(
+          allowed, axis_min(block, axis) - axis_max(start, axis)
+        );
       } else if (delta < 0.0f &&
                  axis_min(start, axis) >= axis_max(block, axis) &&
                  axis_min(destination, axis) < axis_max(block, axis)) {
-        allowed = std::max(allowed, axis_max(block,
-          axis) - axis_min(start, axis));
+        allowed = std::max(
+          allowed, axis_max(block, axis) - axis_min(start, axis)
+        );
       }
     });
 
     axis_component(feet, axis) += allowed;
-    if (allowed != delta) axis_component(velocity, axis)
-      = 0.0f;
+    if (allowed != delta)
+      axis_component(velocity, axis) = 0.0f;
   }
 }

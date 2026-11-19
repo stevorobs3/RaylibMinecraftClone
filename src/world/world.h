@@ -22,8 +22,8 @@ struct World {
   World();
   World(const World&) = delete;
   World& operator=(const World&) = delete;
-  World(World && ) = delete;
-  World& operator=(World && ) = delete;
+  World(World&&) = delete;
+  World& operator=(World&&) = delete;
 
   void initialise();
   bool contains(Vector3Int pos) const noexcept;
@@ -43,8 +43,9 @@ struct World {
     assert(result.has_value());
     return *result;
   }
-  BlockType get(int x, int y, int z) const noexcept { return get({x, y,
-    z}); }
+  BlockType get(int x, int y, int z) const noexcept {
+    return get({x, y, z});
+  }
 
   SetBlockResult set(Vector3Int pos, BlockType type) noexcept;
   SetBlockResult set(int x, int y, int z, BlockType type) noexcept {
@@ -56,19 +57,24 @@ struct World {
     return {floor_div(pos.x, chunk_size), floor_div(pos.z, chunk_size)};
   }
   static constexpr Vector3Int to_local_position(Vector3Int pos) noexcept {
-    return {floor_mod(pos.x, chunk_size), floor_mod(pos.y, chunk_size),
-      floor_mod(pos.z, chunk_size)};
+    return {
+      floor_mod(pos.x, chunk_size),
+      floor_mod(pos.y, chunk_size),
+      floor_mod(pos.z, chunk_size)
+    };
   }
   static Vector3Int to_grid_position(Vector3 vec3) noexcept {
     return {static_cast<int>(std::floor(vec3.x)),
             static_cast<int>(std::floor(vec3.y)),
             static_cast<int>(std::floor(vec3.z))};
   }
-  std::vector<Vector3Int> positions_within_range(Vector3 origin,
-    int range) const;
+  std::vector<Vector3Int> positions_within_range(
+    Vector3 origin, int range
+  ) const;
 
   using ChunkMap = std::unordered_map<ChunkCoord, Chunk, ChunkCoordHash>;
   const ChunkMap& chunks() const noexcept { return chunks_; }
+
 private:
   ChunkMap chunks_;
   std::uint64_t next_generation_ = 0;

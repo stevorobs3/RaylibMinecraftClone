@@ -62,8 +62,9 @@ void PlayerController::reset(Vector3 initial_feet) {
   sync_camera();
 }
 
-void PlayerController::fixed_update(const PlayerMovementInput& input,
-  float dt) {
+void PlayerController::fixed_update(
+  const PlayerMovementInput& input, float dt
+) {
 
   // Horizontal movement is relative to yaw, not pitch.
   const float cy = std::cos(yaw);
@@ -74,8 +75,8 @@ void PlayerController::fixed_update(const PlayerMovementInput& input,
     sy * input.movement.x + cy * input.movement.y
   };
   const float length = std::sqrt(
-    horizontal_velocity.x * horizontal_velocity.x + horizontal_velocity.z
-      * horizontal_velocity.z
+    horizontal_velocity.x * horizontal_velocity.x +
+    horizontal_velocity.z * horizontal_velocity.z
   );
   if (length > 0.0f) {
     horizontal_velocity.x *= speed / length;
@@ -126,16 +127,17 @@ BoundingBox PlayerController::bounds() const {
   };
 }
 
-std::vector<Vector3Int> PlayerController::blocks_overlapping_with_player()
-  const {
+std::vector<Vector3Int>
+PlayerController::blocks_overlapping_with_player() const {
   const BoundingBox bb = bounds();
   std::vector<Vector3Int> blocks;
   const int min_x = static_cast<int>(std::floor(bb.min.x));
   const int min_y = std::max(0, static_cast<int>(std::floor(bb.min.y)));
   const int min_z = static_cast<int>(std::floor(bb.min.z));
   const int max_x = static_cast<int>(std::ceil(bb.max.x));
-  const int max_y = std::min(World::height,
-    static_cast<int>(std::ceil(bb.max.y)));
+  const int max_y = std::min(
+    World::height, static_cast<int>(std::ceil(bb.max.y))
+  );
   const int max_z = static_cast<int>(std::ceil(bb.max.z));
   for (int x = min_x; x < max_x; x++)
     for (int y = min_y; y < max_y; y++)
