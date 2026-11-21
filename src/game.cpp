@@ -1,53 +1,38 @@
-
 #include "game.h"
+
+#include <optional>
+#include <vector>
 
 #include "raylib.h"
 #include "raymath.h"
 #include "player_input.h"
 #include "rendering/texture_atlas.h"
-#include "timer.h"
-#include <optional>
-
 
 Game::Game()
-  : player_initial_position{
-    World::width / 2.0f,
-    7.0f,
-    World::width / 2.0f
-  },
-  player_size{0.6f, 1.8f, 0.6f},
-  camera{
-    .position = player_initial_position + Vector3(
-      0,
-      PlayerController::eye_height,
-      0
+  : player_initial_position{0.5f, 7.0f, 0.5f},
+    player_size{0.6f, 1.8f, 0.6f},
+    camera{
+      .position = player_initial_position + Vector3(
+        0.0f, PlayerController::eye_height, 0.0f
+      ),
+      .target = player_initial_position + Vector3(
+        1.0f, PlayerController::eye_height, 0.0f
+      ),
+      .up         = {0.0f, 1.0f, 0.0f},
+      .fovy       = 75.0f,
+      .projection = CAMERA_PERSPECTIVE
+    },
+    physics(world),
+    controller(
+      physics, camera, player_initial_position, player_size
     ),
-    .target = player_initial_position + Vector3(1.0f, PlayerController::eye_height, 0.0f),
-    .up = {0.0f, 1.0f, 0.0f},
-    .fovy = 75.0f,
-    .projection = CAMERA_PERSPECTIVE
-  },
-  physics(world),
-  controller(world, physics, camera, player_initial_position, player_size),
-  world_mesh(world, texture_atlas),
-  renderer(world, world_mesh, player, controller)
-   {
-    TraceLog(LOG_INFO, "Creating Game");
-   }
-
-void Game::setup_raylib() {
-  // Suppress raylib INFO logs and below
-  // SetTraceLogLevel(LOG_WARNING);
-  TraceLog(LOG_INFO, "setup raylib");
-  SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-  InitWindow(1280, 720, "Raylib minecraft clone");
-  DisableCursor();
-  PollInputEvents();
-  SetTargetFPS(60);
+    world_mesh(world, texture_atlas, block_shader),
+    renderer(world, world_mesh, player, controller) {
+  TraceLog(LOG_INFO, "Creating Game");
 }
 
-
 namespace {
+
 void reset(
   World& world,
   WorldMesh& world_mesh,
@@ -58,54 +43,62 @@ void reset(
   world.initialise();
   controller.reset(player_initial_position);
   player.target.reset();
-  world_mesh.rebuild_dirty_meshes();
-}
+  world_mesh.rebuild_all_meshes();
 }
 
-int Game::run()
- {
-  setup_raylib();
+} // namespace
 
+int Game::run() {
   if (!texture_atlas.load()) {
     TraceLog(LOG_ERROR, "texture atlas could not be loaded");
     return -1;
   }
+
+  if (!block_shader.load()) {
+    TraceLog(LOG_ERROR, "block shader could not be loaded");
+    return -1;
+  }
+
   world_mesh.rebuild_all_meshes();
 
   bool show_physics_debug = false;
 
-  auto timers = DebugTimers{};
-  auto start = Timer::now();
-
-
   while (!WindowShouldClose()) {
     const PlayerInput input = PlayerInput::poll();
 
-    if (input.wants_toggle_debug()) {
+    if (input.wants_toggle_debug())
       show_physics_debug = !show_physics_debug;
-    }
+
     if (input.wants_reset()) {
-      reset(world, world_mesh, player, controller, player_initial_position);
+      reset(
+        world, world_mesh, player, controller,
+        player_initial_position
+      );
+      fixed_stepper.reset();
     }
 
-    // The targeting ray sees the mouse movement of this frame.
+    if (input.wants_take_screenshot()) {
+      const auto directory = fs::path(GetApplicationDirectory());
+      TakeScreenshot((directory / "screenshot01.png").string().c_str());
+    }
 
-    start = Timer::now();
+    // The targeting ray sees this frame's mouse movement.
     controller.apply_look(input.look_delta);
-    timers.apply_look = Timer::elapsed_ms(start);
     player.find_target(world, camera);
-    timers.find_target = Timer::elapsed_ms(start);
-    player.manipulate_blocks(world, physics, controller, input);
-    timers.manipulate_blocks = Timer::elapsed_ms(start);
+    player.manipulate_blocks(
+      world, physics, controller.bounds(), input.block_action()
+    );
 
-    // Constant-acceleration movement and AABB collisions at 60 Hz.
-    controller.update(input.movement_command(), GetFrameTime());
-    timers.controller_update = Timer::elapsed_ms(start);
+    // Multiple systems can share this fixed 60 Hz update.
+    if (input.jump)
+      controller.queue_jump();
 
+    fixed_stepper.advance(GetFrameTime(), [&](float dt) {
+      controller.fixed_update(input.movement_command(), dt);
+    });
 
-    // todo: off main thread
+    // Milestone 3: CPU builds move off the main thread.
     world_mesh.rebuild_dirty_meshes();
-    timers.mesh_rebuild = Timer::elapsed_ms(start);
 
     BeginDrawing();
     ClearBackground(RAYWHITE);
@@ -113,23 +106,18 @@ int Game::run()
 
     renderer.draw_world();
     renderer.draw_player();
-    // todo: this doesn't really represent render time
-    timers.render = Timer::elapsed_ms(start);
 
     EndMode3D();
+
     renderer.draw_ui(
       show_physics_debug,
-      timers,
-      controller.blocks_overlapping_with_player()
+      show_physics_debug
+        ? controller.blocks_overlapping_with_player()
+        : std::vector<Vector3Int>{}
     );
-    EndDrawing();
 
+    EndDrawing();
   }
 
-  world_mesh.unload();
-  texture_atlas.unload();
-
-  CloseWindow();
   return 0;
 }
-

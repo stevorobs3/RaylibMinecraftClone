@@ -1,29 +1,74 @@
 #pragma once
 
-#include <cassert>
-#include <optional>
+#include <cstdint>
+#include <utility>
+#include <vector>
 
-#include "raylib.h"
+#include <raylib.h>
 
-#include "rendering/mesh_generator.h"
+#include "mesh_generator.h"
 
-struct ChunkSectionMesh {
+// Owns the Model and its meshes, not the shared atlas texture.
+class OwnedModel {
+public:
+  explicit OwnedModel(Model model) noexcept : model_(model) {}
 
-  ChunkSectionMesh(
-    ChunkSection &chunk_section,
-    TextureAtlas &texture_atlas
-  );
+  ~OwnedModel() noexcept {
+    UnloadModel(model_);
+  }
 
-  void create_model(Mesh &mesh);
-  void unload();
-  void rebuild_mesh();
+  OwnedModel(const OwnedModel&) = delete;
+  OwnedModel& operator=(const OwnedModel&) = delete;
 
-  std::optional<Model> model;
-  ChunkSection &chunk_section;
+  OwnedModel(OwnedModel&& other) noexcept
+    : model_(std::exchange(other.model_, Model{})) {}
+
+  OwnedModel& operator=(OwnedModel&& other) noexcept {
+    if (this != &other) {
+      UnloadModel(model_);
+      model_ = std::exchange(other.model_, Model{});
+    }
+    return *this;
+  }
+
+  const Model& get() const noexcept { return model_; }
 
 private:
+  Model model_{};
+};
 
-  MeshGenerator mesh_generator;
-  TextureAtlas& texture_atlas;
+// GPU operations must execute on the graphics thread.
+class ChunkSectionMesh {
+public:
+  ChunkSectionMesh() = default;
 
+  ChunkSectionMesh(const ChunkSectionMesh&) = delete;
+  ChunkSectionMesh& operator=(const ChunkSectionMesh&) = delete;
+
+  ChunkSectionMesh(ChunkSectionMesh&&) noexcept = default;
+  ChunkSectionMesh& operator=(ChunkSectionMesh&&) noexcept = default;
+
+  bool replace(
+    const std::vector<MeshData>& data,
+    Texture2D atlas_texture,
+    Shader shader,
+    std::uint64_t generation
+  );
+
+  std::uint64_t generation() const noexcept {
+    return generation_;
+  }
+
+  const std::vector<OwnedModel>& models() const noexcept {
+    return models_;
+  }
+
+  void unload_gpu() noexcept {
+    models_.clear();
+    generation_ = 0;
+  }
+
+private:
+  std::vector<OwnedModel> models_;
+  std::uint64_t generation_ = 0;
 };

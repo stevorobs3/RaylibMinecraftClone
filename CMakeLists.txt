@@ -33,6 +33,7 @@ FetchContent_MakeAvailable(mdspan)
 add_library(minecraft_core STATIC
     src/player/player.cpp
     src/player/player_controller.cpp
+    src/rendering/block_shader.cpp
     src/rendering/chunk_section_mesh.cpp
     src/rendering/mesh_generator.cpp
     src/rendering/render.cpp
@@ -58,9 +59,36 @@ target_link_libraries(minecraft_core PUBLIC
     std::mdspan
 )
 
-# The application supplies only the entry point; everything else is in core.
+# The app supplies only the entry point; everything else is in core.
 add_executable(minecraft_clone src/main.cpp)
 target_link_libraries(minecraft_clone PRIVATE minecraft_core)
+
+# Shader source is tracked by CMake and copied beside the game executable.
+set(SHADER_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders")
+set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+
+add_custom_command(
+    OUTPUT
+        "${SHADER_OUTPUT_DIR}/block.vs"
+        "${SHADER_OUTPUT_DIR}/block.fs"
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "${SHADER_OUTPUT_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SHADER_SOURCE_DIR}/block.vs"
+        "${SHADER_OUTPUT_DIR}/block.vs"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SHADER_SOURCE_DIR}/block.fs"
+        "${SHADER_OUTPUT_DIR}/block.fs"
+    DEPENDS
+        "${SHADER_SOURCE_DIR}/block.vs"
+        "${SHADER_SOURCE_DIR}/block.fs"
+    VERBATIM
+)
+add_custom_target(copy_shaders DEPENDS
+    "${SHADER_OUTPUT_DIR}/block.vs"
+    "${SHADER_OUTPUT_DIR}/block.fs"
+)
+add_dependencies(minecraft_clone copy_shaders)
 
 # Some application headers use raylib 6.2's bundled GLAD declarations.
 # This is an internal raylib header, so keep the version pinned above.
@@ -71,8 +99,9 @@ target_include_directories(minecraft_clone PRIVATE
 # Faithful textures are static development assets. Copy them once per build
 # directory; the stamp prevents repeating the copy after every relink.
 # Delete assets.stamp to force a refresh after changing source textures.
+set(FAITHFUL_ASSETS "${CMAKE_CURRENT_SOURCE_DIR}/assets/faithful")
 set(BLOCK_TEXTURE_DIR
-    "${CMAKE_CURRENT_SOURCE_DIR}/assets/faithful/assets/minecraft/textures/block"
+    "${FAITHFUL_ASSETS}/assets/minecraft/textures/block"
 )
 if(EXISTS "${BLOCK_TEXTURE_DIR}")
     set(ASSET_STAMP "${CMAKE_CURRENT_BINARY_DIR}/assets.stamp")
@@ -95,7 +124,20 @@ if(BUILD_TESTING)
     add_executable(minecraft_tests
         tests/test_main.cpp
         tests/test_vector.cpp
+        tests/test_coords.cpp
+        tests/test_world.cpp
+        tests/test_chunk_section.cpp
         tests/test_world_physics.cpp
+        tests/test_player_actions.cpp
+        tests/test_player_controller.cpp
+        tests/test_quad.cpp
+        tests/test_face_appearance.cpp
+        tests/test_mesh_generator.cpp
+        tests/test_chunk_snapshot.cpp
+        tests/test_ownership.cpp
+        tests/test_fixed_step.cpp
+        tests/test_mesh_boundaries.cpp
+        tests/test_properties.cpp
     )
     target_include_directories(minecraft_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/third_party"

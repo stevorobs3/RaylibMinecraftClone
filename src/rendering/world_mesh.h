@@ -1,32 +1,63 @@
 #pragma once
-
+#include <optional>
+#include <unordered_map>
 #include <vector>
-
 #include "world/world.h"
-#include "rendering/chunk_section_mesh.h"
+#include "chunk_section_mesh.h"
+#include "chunk_snapshot.h"
+#include "mesh_generator.h"
 #include "texture_atlas.h"
+#include "block_shader.h"
 
+struct MeshBuildRequest {
+  SectionCoord section{};
+  std::uint64_t revision   = 0;
+  std::uint64_t generation = 0;
+  ChunkSnapshot snapshot;
+};
+struct MeshBuildResult {
+  SectionCoord section{};
+  std::uint64_t revision   = 0;
+  std::uint64_t generation = 0;
+  std::vector<MeshData> geometry;
+};
 
 struct WorldMesh {
+  WorldMesh(
+    World& world, const TextureAtlas& atlas,
+    const BlockShader& shader
+  ) noexcept
+    : world_(world), atlas_(atlas),
+      shader_(shader), generator_(atlas) {}
+  WorldMesh(const WorldMesh&) = delete;
+  WorldMesh& operator=(const WorldMesh&) = delete;
 
-  // todo: this should probably handle dirty management
-  // todo: can the world issue an event / callback when a chunk section changes?
-  WorldMesh(World &world, TextureAtlas& texture_atlas);
+  // Main-thread capture: reads the live world into a snapshot.
+  std::optional<MeshBuildRequest> capture_snapshot(
+    SectionCoord coord
+  ) const;
+  // Pure CPU work: safe for workers with immutable inputs.
+  MeshBuildResult build_cpu(const MeshBuildRequest& request) const;
+  // Synchronous convenience path, useful until Milestone 3.
+  std::optional<MeshBuildResult> prepare_cpu(SectionCoord coord) const;
+  // GPU-only: rejects stale/unloaded section results.
+  bool submit_gpu(MeshBuildResult&& result);
+  bool is_current(const MeshBuildResult& result) const noexcept;
 
-  //todo: handle async things
   void rebuild_dirty_meshes();
-  void unload();
   void rebuild_all_meshes();
-
-  // todo: remove those that are:
-  // 1) outside the camera (frustrum culling)
-  // 2) not within the same air pocket as the camera
-
-  std::vector<ChunkSectionMesh> chunk_section_meshes;
-
+  void unload() noexcept {
+    chunk_section_meshes.clear();
+  }
+  using SectionMeshes =
+    std::unordered_map<
+      SectionCoord, ChunkSectionMesh, SectionCoordHash
+    >;
+  SectionMeshes chunk_section_meshes;
 
 private:
-  World &world;
-  TextureAtlas& texture_atlas;
-
+  World& world_;
+  const TextureAtlas& atlas_;
+  const BlockShader& shader_;
+  MeshGenerator generator_;
 };

@@ -5,13 +5,16 @@
 #include "player/player.h"
 #include "player/player_controller.h"
 #include "world/world.h"
+#include "rendering/block_shader.h"
 #include "rendering/world_mesh.h"
 #include "rendering/texture_atlas.h"
 #include "rendering/render.h"
 #include "world_physics.h"
+#include "fixed_step.h"
 
 struct Game {
   TextureAtlas texture_atlas{};
+  BlockShader block_shader{};
   World world{};
   Player player{};
   Vector3 player_initial_position;
@@ -21,11 +24,9 @@ struct Game {
   PlayerController controller;
   WorldMesh world_mesh;
   Renderer renderer;
-
+  FixedStepper fixed_stepper{};
 
   Game();
-
-  void setup_raylib();
 
   int run();
 };

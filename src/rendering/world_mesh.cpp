@@ -1,43 +1,126 @@
-
 #include "world_mesh.h"
 
-WorldMesh::WorldMesh(
-  World &world,
-  TextureAtlas& texture_atlas
-) : world(world), texture_atlas(texture_atlas) {
-  TraceLog(LOG_INFO, "Creating WorldMesh");
-// todo: more generally - what happens if something like the push_back fails?
-  // todo: more generally - what error handling am I missing?
-  // todo: more generally - the mesh generation requires run-time allocations, can this be mitigated / minimised / correctly error handled?
-  chunk_section_meshes.reserve(world.num_chunks * Chunk::n_sections);
-  for (int i = 0; i < world.num_chunks; i++) {
-    for (int j = 0; j < Chunk::n_sections; j++) {
-      ChunkSection &chunk_section = world.get_chunk_section(i,j);
-      chunk_section_meshes.push_back(ChunkSectionMesh{
-        chunk_section,
-        texture_atlas
-      });
+std::optional<MeshBuildRequest> WorldMesh::capture_snapshot(
+  SectionCoord coord
+) const {
+  const ChunkSection* section = world_.find_section(coord);
+
+  if (!section)
+    return std::nullopt;
+
+  const Chunk* chunk = world_.find_chunk(coord.chunk);
+
+  return MeshBuildRequest{
+    coord,
+    section->revision,
+    chunk->generation,
+    make_snapshot(world_, *section)
+  };
+}
+
+MeshBuildResult WorldMesh::build_cpu(
+  const MeshBuildRequest& request
+) const {
+  return MeshBuildResult{
+    request.section,
+    request.revision,
+    request.generation,
+    generator_.build(request.snapshot)
+  };
+}
+
+std::optional<MeshBuildResult> WorldMesh::prepare_cpu(
+  SectionCoord coord
+) const {
+  auto request = capture_snapshot(coord);
+
+  if (!request)
+    return std::nullopt;
+
+  return build_cpu(*request);
+}
+
+bool WorldMesh::is_current(
+  const MeshBuildResult& result
+) const noexcept {
+  const ChunkSection* section = world_.find_section(result.section);
+  const Chunk* chunk = world_.find_chunk(result.section.chunk);
+
+  return section && chunk &&
+         section->revision == result.revision &&
+         chunk->generation == result.generation;
+}
+
+bool WorldMesh::submit_gpu(MeshBuildResult&& result) {
+  if (!is_current(result))
+    return false;
+
+  ChunkSection* section = world_.find_section(result.section);
+
+  if (result.geometry.empty()) {
+    chunk_section_meshes.erase(result.section);
+    section->acknowledge(result.revision);
+    return true;
+  }
+
+  auto it = chunk_section_meshes.find(result.section);
+
+  if (it == chunk_section_meshes.end()) {
+    // Build first, so failures don't leave half-created map entries.
+    ChunkSectionMesh replacement;
+
+    if (!replacement.replace(
+      result.geometry, atlas_.texture(),
+      shader_.get(), result.generation
+    )) {
+      return false;
+    }
+
+    chunk_section_meshes.try_emplace(
+      result.section, std::move(replacement)
+    );
+  } else {
+    if (it->second.generation() != result.generation)
+      it->second.unload_gpu();
+
+    if (!it->second.replace(
+      result.geometry, atlas_.texture(),
+      shader_.get(), result.generation
+    )) {
+      return false;
+    }
+  }
+
+  section->acknowledge(result.revision);
+  return true;
+}
+
+void WorldMesh::rebuild_dirty_meshes() {
+  // Purge render models belonging to unloaded or replaced chunks.
+  for (auto it = chunk_section_meshes.begin();
+       it != chunk_section_meshes.end();) {
+    const Chunk* live = world_.find_chunk(it->first.chunk);
+
+    if (!live || live->generation != it->second.generation())
+      it = chunk_section_meshes.erase(it);
+    else
+      it++;
+  }
+
+  for (auto& [coord, chunk] : world_.chunks()) {
+    for (auto& section : chunk.chunk_sections) {
+      if (!section.dirty)
+        continue;
+
+      auto result = prepare_cpu(section.coord);
+
+      if (result)
+        submit_gpu(std::move(*result));
     }
   }
 }
 
-void WorldMesh::rebuild_dirty_meshes() {
-  for (auto [i,j] : world.dirty_chunk_sections) {
-    int index = i * Chunk::n_sections + j;
-    assert(index >= 0 && index < chunk_section_meshes.size());
-    chunk_section_meshes[index].rebuild_mesh();
-  }
-  world.dirty_chunk_sections.clear();
-}
-
 void WorldMesh::rebuild_all_meshes() {
-  for (ChunkSectionMesh & c: chunk_section_meshes) {
-    c.rebuild_mesh();
-  }
-}
-
-void WorldMesh::unload() {
-  for (ChunkSectionMesh &c : chunk_section_meshes) {
-    c.unload();
-  }
+  world_.mark_all_dirty();
+  rebuild_dirty_meshes();
 }

@@ -1,45 +1,45 @@
-
 #include "chunk_section_mesh.h"
 
-ChunkSectionMesh::ChunkSectionMesh(
-  ChunkSection &chunk_section,
-  TextureAtlas &texture_atlas
-): chunk_section(chunk_section),
-   mesh_generator(texture_atlas),
-   texture_atlas(texture_atlas) {}
+bool ChunkSectionMesh::replace(
+  const std::vector<MeshData>& data,
+  Texture2D texture,
+  Shader shader,
+  std::uint64_t generation
+) {
+  std::vector<OwnedModel> replacement;
+  replacement.reserve(data.size());
 
-void ChunkSectionMesh::create_model(Mesh &mesh) {
-  model = LoadModelFromMesh(mesh);
-  model->materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture_atlas.texture;
-}
+  for (const MeshData& part : data) {
+    auto mesh = MeshGenerator::upload(part);
+    if (!mesh)
+      return false;
 
-void ChunkSectionMesh::unload() {
-  if (model)
-    UnloadModel(*model);
-}
-
-// todo: this is slow and should be done off the main thread -> and some will need to
-// be done on the main thread (uploading to gpu)
-// rebuild the mesh for this chunk
-void ChunkSectionMesh::rebuild_mesh() {
-
-  // todo: is it better to unload the mesh or re-use it in place? (a later optimisation worth considering)
-  std::optional<Mesh> mesh = mesh_generator.from(chunk_section);
-
-  if(!mesh) {
-    if (model) {
-      UnloadModel(*model);
+    // LoadModelFromMesh transfers ownership of the mesh buffers.
+    Model model = LoadModelFromMesh(*mesh);
+    if (!model.meshes || !model.materials || !model.meshMaterial ||
+       !model.materials[0].maps) {
+      // Avoid UnloadModel on a partially allocated Model (it assumes
+      // its materials array is usable whenever materialCount > 0).
+      if (model.meshes) {
+        UnloadMesh(model.meshes[0]);
+        MemFree(model.meshes);
+      } else {
+        UnloadMesh(*mesh);
+      }
+      if (model.materials) {
+        if (model.materials[0].maps)
+          MemFree(model.materials[0].maps);
+        MemFree(model.materials);
+      }
+      MemFree(model.meshMaterial);
+      return false;
     }
-    model = std::nullopt;
-    return;
+    model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
+    model.materials[0].shader = shader;
+    replacement.emplace_back(model);
   }
-  if (!model) {
-    create_model(*mesh);
-
-  }
-  else {
-    UnloadMesh(model->meshes[0]);
-    model->meshes[0] = *mesh;
-  }
-
+  // Old GPU objects released after successful replacement.
+  models_.swap(replacement);
+  generation_ = generation;
+  return true;
 }

@@ -1,24 +1,198 @@
+# Raylib Minecraft Clone
 
-Issues / tasks:
-  Move mesh building off the main thread
-  Clean up / remove the timing code
-  Check if the to_string of vector is used everywhere
-  Re-write collisions and movement to use the other sliding AABB mechanism
-  make player block manipulation based off some action enum
-  Pull out the fixed_update stuff into a central place that other code can use
-  refactor mesh_generator to be more tidy
-  Lookup proper colors for minecraft overlays
-  Implement overlaps properly the way minecraft does - transparent quad over top
-  make the chunk boundary debug visuals more grid like
-  tidy up lookup_texture_uv
-  Add proper error handling everywhere
-  Add proper RAII principles everywhere
-  Revisit where dirty mesh state should be handled and how it should be updated
-  Frustrum culling
-  Air pocket culling
-  Chunk and chunkSection copying and move semantics
-  Use a PackedArray for chunks
-  Chunk loading / unloading
-  Proper world generation
-  Refactor world coordinates into local (within a chunk / chunk section) and global
-  Handle negative world coordinates
+A small voxel sandbox used to study C++23, raylib 6.2 and practical engine
+architecture. The game currently runs on Windows 10 using MinGW, CMake and
+OpenGL 3.3.
+
+## Code style
+
+First-party C++ code and tests target a 75-character line width. The
+`.clang-format` file specifies two-space indentation, spaces around
+operators and control statements, aligned consecutive assignments, and
+multi-line single-statement `if` bodies. Prefix increments are reserved for
+expressions that use the new value.
+
+## Current development phase
+
+Milestone 1 established a basic collision and geometry test foundation. The
+ongoing PR also incorporates architecture and ownership groundwork for
+Milestones 2–3.
+**Run the local tests and smoke-test the game before merging this PR.** No
+hosted CI is configured.
+
+### Milestone 2 — Architecture, correctness and resource ownership
+
+- [x] Use signed `ChunkCoord{x,z}` keys and coordinate-keyed chunk lookup.
+- [x] Keep exactly 24 fixed 16³ `ChunkSection` objects in each
+      non-copyable, non-movable `Chunk` using `std::array`.
+- [x] Centre the initial 2×2 chunk grid around the origin (chunks -1 and 0
+      on each axis).
+- [x] Use floor division/modulo for negative world coordinates.
+- [x] Centralise the fixed-step clock and separate block actions from
+      raylib input.
+- [x] Remove temporary timing code.
+- [x] Separate CPU-only mesh building from GPU upload.
+- [x] Use move-only ownership wrappers for raylib images and models.
+- [x] Support multiple 16-bit-safe indexed submeshes per section.
+- [x] Separate block face materials from atlas coordinates and blend
+      biome-tinted grass side overlays on one quad in a custom shader.
+- [x] Track section revisions and chunk generations, with stale-result
+      rejection.
+- [x] Use explicit `try_get()` and `SetBlockResult` for normal
+      missing-block cases.
+- [x] Add local unit/regression tests across gameplay logic, world,
+      geometry and ownership.
+- [ ] Validate Windows Debug and Release builds, gameplay and the entire
+      test suite.
+- [ ] Investigate raylib/OpenGL allocation and device failure paths that
+      cannot be guaranteed recoverable by wrappers alone.
+- [ ] Add configurable per-biome grass colours and more faithful
+      overlay tinting.
+- [ ] Harden the world-edge and initial-overlap physics rules as new block
+      shapes arrive.
+
+### Milestone 3 — Threaded mesh generation
+
+The synchronous implementation already has explicit APIs:
+`WorldMesh::capture_snapshot()` (main-thread world read),
+`WorldMesh::build_cpu()` (CPU-only generation) and
+`WorldMesh::submit_gpu()` (main-thread GPU replacement). The synchronous
+`prepare_cpu()` convenience path combines the first two.
+
+Remaining tasks:
+- [ ] Introduce a bounded worker-thread pool and work queue.
+- [ ] Create immutable section snapshots on the main thread.
+- [ ] Run CPU mesh builds on workers only; do not access live world blocks
+      or raylib GPU APIs there.
+- [ ] Return results through a bounded completion queue.
+- [ ] Reject stale results by checking **both** section revision and chunk
+      generation.
+- [ ] Limit uploads per frame; preserve the old model until a replacement
+      succeeds.
+- [ ] Support shutdown, cancellation, unloading and error reporting.
+- [ ] Add deterministic concurrency tests and benchmark with synchronous
+      generation.
+
+### Longer-term backlog
+
+- Dynamic chunk streaming, disk persistence and procedural terrain
+  generation
+- Palette-compressed block storage inside the fixed 16³ sections
+- Frustum culling and air-connectivity/occlusion culling
+- Stairs, slabs, transparent materials, liquids and more general collision
+  shapes
+- More faithful Minecraft biome tinting, improved overlay blending and
+  mipmap gutters
+- Better world/chunk debug visuals, texture resources and structured
+  profiling
+
+## World API contracts
+
+`World::chunks()` exposes a read-only coordinate-keyed hashmap. A `Chunk`
+has 24 fixed vertical sections (total world height 384). Chunk and section
+objects cannot be copied or moved; hashmap rehashing preserves their
+addresses while the chunk remains loaded. **Unloading destroys them** , so
+no long-lived references may escape into render work.
+
+`World::get()` is an **unchecked internal API with a debug assertion** :
+the caller must already know the coordinate belongs to a loaded chunk and
+is within the supported Y interval. Use `try_get()` for uncertain or
+unloaded coordinates, and `set()` or `fill_section()` for mutation. Those
+return explicit status values and invalidate affected neighbouring
+sections. Raw mutation of section block storage is intentionally private.
+
+The initial world covers x/z in [-16,16), with grass surface at y=6.
+Additional chunks can be explicitly created and unloaded by chunk
+coordinates. A missing chunk is not automatically generated by a read.
+
+## Shader files and atlas sampling
+
+The voxel shader lives in `src/shaders/block.vs` and
+`src/shaders/block.fs`, rather than embedded C++ strings.
+CMake copies these files to `shaders/` beside the executable.
+`BlockShader::load()` uses raylib's `LoadShader()` with those paths.
+Rebuild `minecraft_clone` after changing a shader to copy it.
+
+The Faithful 64 source tiles are stitched into the atlas with replicated
+edge texels. With five mip levels, the gutter shrinks from 16 pixels
+at level 0 to one pixel at level 4. This prevents atlas-neighbour
+sampling at tile edges while preserving the image's RGBA values.
+The 64-pixel source size is explicit in `TextureAtlas::tile_pixels`;
+change that constant when migrating to a different texture resolution.
+
+Grass sides still use one quad with two UV channels. For now the
+base uses `dirt.png`, not `grass_block_side.png`: the original side
+texture can contain baked-in green pixels that show through when
+the overlay is transparent, especially with mipmapping. The tinted
+overlay itself is unchanged. This is a reversible texture-selection
+workaround, not a modification to the source PNGs.
+
+The fragment shader uses a binary alpha cutoff to choose either
+the tinted overlay or the dirt base. Atlas padding and the cutoff
+solve different problems; neither requires duplicate geometry.
+
+## Rendering and ownership contracts
+
+`ChunkSnapshot` contains 16³ voxels plus a one-cell neighbour halo. A CPU
+mesh build reads only that snapshot, never the live world or GPU. Each
+section's render object holds one or more move-only owned models. Models
+own their meshes; the atlas owns the shared texture. Stored render meshes
+also track the chunk generation so that unloading and recreating a chunk at
+the same coordinates does not retain obsolete models. Do not
+draw/upload/unload GPU models off the graphics thread. The window's
+lifetime must encompass all GPU resource destructors.
+
+Mesh vertices have 16-bit indices; the generator splits at 65,536 vertices
+(16,384 quads) per raylib mesh. Grass side overlays use a *single quad*
+with two UV channels. The custom OpenGL 3.3 shader samples both textures
+from the atlas and selects the tinted overlay when its sampled alpha
+passes a configurable 0.5 cutout threshold. Otherwise it shows the base.
+No partial colour blending, offset-quad seams or Z-fighting. This is not a
+general-purpose translucent-block rendering pipeline. The shader is
+owned by Game and borrowed by Models. Unloaded neighbours are treated
+as air for meshing.
+
+Memory allocation in standard C++ containers can throw `std::bad_alloc`.
+The game catches ordinary `std::exception` at its outer boundary, after
+which RAII releases owned resources. Some raylib C allocation or GL error
+paths are not guaranteed to fail gracefully; investigate separately rather
+than assuming `noexcept` solves them.
+
+## Local testing (no GitHub Actions)
+
+From your existing Windows development build:
+
+```cmd
+cmake --build build/sublime-Debug --target minecraft_tests --parallel 6
+ctest --test-dir build/sublime-Debug --output-on-failure
+```
+
+Or configure a new Debug build when online or with dependencies cached:
+
+```cmd
+cmake -S . -B build/local-test -G Ninja ^
+  -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+cmake --build build/local-test --target minecraft_tests --parallel 6
+ctest --test-dir build/local-test --output-on-failure
+```
+
+For convenience on Windows, run `scripts\\run-tests.cmd` from the
+repository root (or supply a build directory as its first argument).
+
+The doctest suite covers world coordinates, chunk identity and lifetime,
+section invalidation, fixed-step updates, player input and manipulation,
+swept AABB collision, face normals, UV/material descriptions, CPU mesh
+generation, index splitting and image ownership. Unit tests do not create
+an OpenGL window; GPU uploading/model replacement, actual texture asset
+loading and visual layering also require **manual runtime smoke tests** .
+
+Manual checks after pulling: moving across x/z=0, jumping, falling onto
+terrain, wall sliding and collisions at negative positions; breaking and
+placing blocks at chunk and section boundaries; reset; grass tint and
+overlay tint and borders from both near and far; and repeated
+mesh/model rebuilds.
+
+**Development asset note:** the `assets/` directory is gitignored. To run
+the game, provide the Faithful block PNGs listed in
+`src/rendering/texture_atlas.h`, including `grass_block_side_overlay.png`
+.

@@ -5,7 +5,6 @@
 
 #include "vector.h"
 
-// the order of these is tied to the textures_lookup in texture_atlas
 enum class BlockType: uint8_t {
   AIR,
   GRASS,
@@ -17,7 +16,8 @@ enum class BlockType: uint8_t {
 struct Block {
 
   //todo: handle non full blocks
-  static BoundingBox bounds(Vector3Int position, BlockType block_type) {
+  static BoundingBox bounds(Vector3Int position, [[maybe_unused]]
+    BlockType block_type) noexcept {
     return BoundingBox{
       .min = {
         static_cast<float>(position.x),

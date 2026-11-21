@@ -7,9 +7,9 @@
 #include "world/block.h"
 
 enum class Direction {
-  EAST,  // positive in x
+  EAST, // positive in x
   WEST,
-  UP,    // positive in y
+  UP, // positive in y
   DOWN,
   NORTH, // positive in z
   SOUTH
@@ -25,7 +25,6 @@ struct Quad {
   Vector3Int position;
   Vertices vertices{};
   Vector3 normal;
-  Color color;
 
   Quad(
     BlockType block_type,
@@ -40,16 +39,7 @@ struct Quad {
     }
     normal = lookup_normal(direction);
 
-    if (direction == Direction::UP && block_type == BlockType::GRASS) {
-      // todo: not right colour, look this up in grass block
-      color = Color(145, 189, 89,255);
-    }
-    else {
-      color =  WHITE;
-    }
-
   }
-
 
   static constexpr std::array directions{
     Direction::EAST,
@@ -60,63 +50,60 @@ struct Quad {
     Direction::SOUTH
   };
 
-
-
   static constexpr Vector3 lookup_normal(Direction dir){
     switch (dir) {
-      case Direction::EAST:  return { 1, 0,  0};
-      case Direction::WEST:  return {-1, 0,  0};
-      case Direction::UP:    return {0,  1,  0};
-      case Direction::DOWN:  return {0, -1,  0};
-      case Direction::NORTH: return {0,  0,  1};
-      case Direction::SOUTH: return {0,  0, -1};
+      case Direction::EAST:  return { 1,  0,  0};
+      case Direction::WEST:  return {-1,  0,  0};
+      case Direction::UP:    return { 0,  1,  0};
+      case Direction::DOWN:  return { 0, -1,  0};
+      case Direction::NORTH: return { 0,  0,  1};
+      case Direction::SOUTH: return { 0,  0, -1};
     }
     std::unreachable();
   }
 
-
 private:
     // anti-clockwise Right hand wind
   static constexpr Vertices north_face{
-    Vector3{0,1,1},
-    Vector3{1,1,1},
-    Vector3{0,0,1},
-    Vector3{1,0,1},
+    Vector3{0, 1, 1},
+    Vector3{1, 1, 1},
+    Vector3{0, 0, 1},
+    Vector3{1, 0, 1},
   };
 
   static constexpr Vertices south_face{
-    Vector3{1,1,0},
-    Vector3{0,1,0},
-    Vector3{1,0,0},
-    Vector3{0,0,0},
+    Vector3{1, 1, 0},
+    Vector3{0, 1, 0},
+    Vector3{1, 0, 0},
+    Vector3{0, 0, 0},
   };
 
   static constexpr Vertices east_face{
-    Vector3{1,1,1},
-    Vector3{1,1,0},
-    Vector3{1,0,1},
-    Vector3{1,0,0},
+    Vector3{1, 1, 1},
+    Vector3{1, 1, 0},
+    Vector3{1, 0, 1},
+    Vector3{1, 0, 0},
   };
 
   static constexpr Vertices west_face{
-    Vector3{0,1,0},
-    Vector3{0,1,1},
-    Vector3{0,0,0},
-    Vector3{0,0,1},
+    Vector3{0, 1, 0},
+    Vector3{0, 1, 1},
+    Vector3{0, 0, 0},
+    Vector3{0, 0, 1},
   };
 
   static constexpr Vertices top_face{
-    Vector3{1,1,0},
-    Vector3{1,1,1},
-    Vector3{0,1,0},
-    Vector3{0,1,1},
+    Vector3{1, 1, 0},
+    Vector3{1, 1, 1},
+    Vector3{0, 1, 0},
+    Vector3{0, 1, 1},
   };
 
   static constexpr Vertices bottom_face{
-    Vector3{1,0,1},
-    Vector3{1,0,0},
-    Vector3{0,0,1},
-    Vector3{0,0,0},
+    Vector3{1, 0, 1},
+    Vector3{1, 0, 0},
+    Vector3{0, 0, 1},
+    Vector3{0, 0, 0},
   };
 
   constexpr Vertices raw_vertices(Direction direction){

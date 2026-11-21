@@ -1,160 +1,225 @@
-
 #include "world.h"
 
 World::World() {
-  TraceLog(LOG_INFO, "Creating World");
-  chunks.reserve(n * n);
-  for (int z = 0; z < n; z++) {
-    for (int x = 0; x < n; x++) {
-      chunks.emplace_back(*this, Vector3{
-        static_cast<float>(x * ChunkSection::n),
-        0,
-        static_cast<float>(z * ChunkSection::n),
-      });
-    }
-  }
-  //todo: external initialisation / loading / unloading from disk
   initialise();
 }
 
 void World::initialise() {
-  TraceLog(LOG_INFO, "Initialising World");
-  for(int i = 0; i < chunks.size(); i++) {
-    Chunk &chunk = chunks[i];
+  chunks_.clear();
 
-    // Reset player-edited blocks too.
-    std::vector<int> dirty = chunk.fill(BlockType::AIR);
-    for (int section : dirty) {
-      mark_dirty(i, section);
+  constexpr int start = -initial_grid_size / 2;
+
+  for (int z = 0; z < initial_grid_size; z++) {
+    for (int x = 0; x < initial_grid_size; x++) {
+      get_or_create_chunk({start + x, start + z});
     }
+  }
 
-    auto blocks = chunk.chunk_sections[0].blocks();
-    for (int x = 0; x < ChunkSection::n; x++) {
-      for (int z = 0; z < ChunkSection::n; z++) {
-        blocks[x,0,z] = BlockType::BEDROCK;
-        blocks[x,1,z] = BlockType::STONE;
-        blocks[x,2,z] = BlockType::STONE;
+  for (auto& [coord, chunk] : chunks_) {
+    for (int lx = 0; lx < chunk_size; lx++) {
+      for (int lz = 0; lz < chunk_size; lz++) {
+        const int x = chunk.origin.x + lx;
+        const int z = chunk.origin.z + lz;
 
-        blocks[x,3,z] = BlockType::DIRT;
-        blocks[x,4,z] = BlockType::DIRT;
-        blocks[x,5,z] = BlockType::DIRT;
+        set(x, 0, z, BlockType::BEDROCK);
 
-        blocks[x,6,z] = BlockType::GRASS;
-        mark_dirty(i, 0);
+        for (int y = 1; y <= 2; y++)
+          set(x, y, z, BlockType::STONE);
+
+        for (int y = 3; y <= 5; y++)
+          set(x, y, z, BlockType::DIRT);
+
+        set(x, 6, z, BlockType::GRASS);
       }
     }
   }
 }
 
-void World::mark_dirty(int chunk_index, int chunk_section_index) {
-  assert(chunk_index >= 0 && chunk_index < chunks.size());
-  assert(chunk_section_index >= 0 &&  chunk_section_index < Chunk::n_sections);
-
-  dirty_chunk_sections.emplace(chunk_index, chunk_section_index);
+bool World::contains(Vector3Int pos) const noexcept {
+  return pos.y >= 0 && pos.y < height &&
+         is_loaded(to_chunk_coord(pos));
 }
 
-bool World::contains(Vector3Int position) const {
-  return position.x >= 0 && position.x < width &&
-    position.y >= 0 && position.y < height &&
-    position.z >= 0 && position.z < width;
+bool World::is_loaded(ChunkCoord coord) const noexcept {
+  return chunks_.find(coord) != chunks_.end();
 }
 
-BlockType World::get(int x, int y, int z) const {
-  assert(contains({x,y,z}));
-  // todo: use global and local coords with a mdspan wrapper here
-  int index = (x / ChunkSection::n) + n * (z / ChunkSection::n);
-
-  int chunk_section_index = y / ChunkSection::n;
-  int section_x = x % ChunkSection::n;
-  int section_y = y % ChunkSection::n;
-  int section_z = z % ChunkSection::n;
-  BlockType block_type =  chunks[index]
-    .chunk_sections[chunk_section_index]
-    .const_blocks()[section_x, section_y, section_z];
-
-  return block_type;
+Chunk* World::find_chunk(ChunkCoord coord) noexcept {
+  auto it = chunks_.find(coord);
+  return it == chunks_.end() ? nullptr : &it->second;
 }
 
-ChunkSection& World::get_chunk_section(
-  int chunk_index,
-  int chunk_section_index
-) {
-  assert(chunk_index >= 0 && chunk_index < chunks.size());
-  assert(chunk_section_index >= 0 && chunk_section_index < Chunk::n_sections);
-  return chunks[chunk_index].chunk_sections[chunk_section_index];
+const Chunk* World::find_chunk(ChunkCoord coord) const noexcept {
+  auto it = chunks_.find(coord);
+  return it == chunks_.end() ? nullptr : &it->second;
 }
 
-void World::set(int x, int y, int z, BlockType block_type) {
-  assert(contains({x,y,z}));
-  // avoid unneccessary work
-  assert(get(x,y,z) != block_type);
-  int index = (x / ChunkSection::n) + n * (z / ChunkSection::n);
-  assert(index >= 0 && index < chunks.size());
-  int chunk_section_index = y / ChunkSection::n;
-  assert(chunk_section_index >= 0 && chunk_section_index < Chunk::n_sections);
-  int section_x = x % ChunkSection::n;
-  int section_y = y % ChunkSection::n;
-  int section_z = z % ChunkSection::n;
-  chunks[index]
-    .chunk_sections[chunk_section_index]
-    .blocks()[section_x, section_y, section_z] = block_type;
+Chunk& World::get_or_create_chunk(ChunkCoord coord) {
+  auto existing = chunks_.find(coord);
 
-  mark_dirty(index, chunk_section_index);
+  if (existing != chunks_.end())
+    return existing->second;
 
-  // todo: pull into separate place - its handy
-  // todo: this is messy as
-  int chunk_x = (x / ChunkSection::n);
-  int chunk_z = (z / ChunkSection::n);
-  if (section_x == 0) {
-    int neighbour_index = (chunk_x - 1) + n * chunk_z;
-    if (chunk_x > 0)
-      mark_dirty(neighbour_index, chunk_section_index);
-  }
-  if (section_x == ChunkSection::n - 1) {
-    int neighbour_index = (chunk_x + 1) + n * chunk_z;
-    if (chunk_x + 1 < n)
-      mark_dirty(neighbour_index, chunk_section_index);
-  }
-  if (section_z == 0) {
-    int neighbour_index = chunk_x + n * (chunk_z - 1);
-    if (chunk_z > 0)
-      mark_dirty(neighbour_index, chunk_section_index);
-  }
-  if (section_z == ChunkSection::n - 1) {
-    int neighbour_index = chunk_x + n * (chunk_z + 1);
-    if (chunk_z + 1 < n)
-      mark_dirty(neighbour_index, chunk_section_index);
-  }
-  if (section_y == 0) {
-    int neighbour_index = chunk_section_index - 1;
-    if (neighbour_index >= 0)
-      mark_dirty(index, neighbour_index);
-  }
-  if (section_y == ChunkSection::n - 1) {
-    int neighbour_index = chunk_section_index + 1;
-    if (neighbour_index < Chunk::n_sections)
-      mark_dirty(index, neighbour_index);
+  next_generation_++;
+
+  auto [it, inserted] = chunks_.try_emplace(
+    coord, coord, next_generation_
+  );
+
+  if (inserted) {
+    for (int section = 0; section < Chunk::n_sections; section++) {
+      mark_dirty({{coord.x - 1, coord.z}, section});
+      mark_dirty({{coord.x + 1, coord.z}, section});
+      mark_dirty({{coord.x, coord.z - 1}, section});
+      mark_dirty({{coord.x, coord.z + 1}, section});
+    }
   }
 
+  return it->second;
+}
+
+bool World::unload_chunk(ChunkCoord coord) {
+  if (chunks_.erase(coord) == 0)
+    return false;
+
+  // Removing a chunk exposes faces on its loaded neighbours.
+  for (int section = 0; section < Chunk::n_sections; section++) {
+    mark_dirty({{coord.x - 1, coord.z}, section});
+    mark_dirty({{coord.x + 1, coord.z}, section});
+    mark_dirty({{coord.x, coord.z - 1}, section});
+    mark_dirty({{coord.x, coord.z + 1}, section});
+  }
+
+  return true;
+}
+
+ChunkSection* World::find_section(SectionCoord coord) noexcept {
+  Chunk* chunk = find_chunk(coord.chunk);
+
+  if (!chunk || coord.y < 0 || coord.y >= Chunk::n_sections)
+    return nullptr;
+
+  return &chunk->chunk_sections[coord.y];
+}
+
+const ChunkSection*
+World::find_section(SectionCoord coord) const noexcept {
+  const Chunk* chunk = find_chunk(coord.chunk);
+
+  if (!chunk || coord.y < 0 || coord.y >= Chunk::n_sections)
+    return nullptr;
+
+  return &chunk->chunk_sections[coord.y];
+}
+
+SetBlockResult World::fill_section(
+  SectionCoord coord, BlockType type
+) noexcept {
+  ChunkSection* section = find_section(coord);
+
+  if (!section) {
+    return coord.y < 0 || coord.y >= Chunk::n_sections
+      ? SetBlockResult::OutOfBounds
+      : SetBlockResult::Unloaded;
+  }
+
+  if (!section->fill(type))
+    return SetBlockResult::Unchanged;
+
+  // A changed section can expose or hide adjacent faces.
+  mark_dirty({{coord.chunk.x - 1, coord.chunk.z}, coord.y});
+  mark_dirty({{coord.chunk.x + 1, coord.chunk.z}, coord.y});
+  mark_dirty({{coord.chunk.x, coord.chunk.z - 1}, coord.y});
+  mark_dirty({{coord.chunk.x, coord.chunk.z + 1}, coord.y});
+  mark_dirty({coord.chunk, coord.y - 1});
+  mark_dirty({coord.chunk, coord.y + 1});
+
+  return SetBlockResult::Changed;
+}
+
+void World::mark_all_dirty() noexcept {
+  for (auto& [coord, chunk] : chunks_) {
+    for (auto& section : chunk.chunk_sections)
+      section.mark_dirty();
+  }
+}
+
+std::optional<BlockType>
+World::try_get(Vector3Int pos) const noexcept {
+  if (pos.y < 0 || pos.y >= height)
+    return std::nullopt;
+
+  const auto* section = find_section({
+    to_chunk_coord(pos), pos.y / chunk_size
+  });
+
+  if (!section)
+    return std::nullopt;
+
+  return section->get_local(to_local_position(pos));
+}
+
+void World::mark_dirty(SectionCoord coord) noexcept {
+  if (auto* section = find_section(coord))
+    section->mark_dirty();
+}
+
+SetBlockResult World::set(
+  Vector3Int pos, BlockType type
+) noexcept {
+  if (pos.y < 0 || pos.y >= height)
+    return SetBlockResult::OutOfBounds;
+
+  const ChunkCoord chunk_coord = to_chunk_coord(pos);
+  auto* section = find_section({chunk_coord, pos.y / chunk_size});
+
+  if (!section)
+    return SetBlockResult::Unloaded;
+
+  const Vector3Int local = to_local_position(pos);
+
+  if (!section->set_local(local, type))
+    return SetBlockResult::Unchanged;
+
+  const int s = pos.y / chunk_size;
+
+  if (local.x == 0)
+    mark_dirty({{chunk_coord.x - 1, chunk_coord.z}, s});
+
+  if (local.x == chunk_size - 1)
+    mark_dirty({{chunk_coord.x + 1, chunk_coord.z}, s});
+
+  if (local.z == 0)
+    mark_dirty({{chunk_coord.x, chunk_coord.z - 1}, s});
+
+  if (local.z == chunk_size - 1)
+    mark_dirty({{chunk_coord.x, chunk_coord.z + 1}, s});
+
+  if (local.y == 0)
+    mark_dirty({chunk_coord, s - 1});
+
+  if (local.y == chunk_size - 1)
+    mark_dirty({chunk_coord, s + 1});
+
+  return SetBlockResult::Changed;
 }
 
 std::vector<Vector3Int> World::positions_within_range(
-  Vector3 origin,
-  int range
+  Vector3 origin, int range
 ) const {
+  const Vector3Int center = to_grid_position(origin);
+  std::vector<Vector3Int> result;
 
-  Vector3Int origin_grid_position = to_grid_position(origin);
+  for (int dx = -range; dx <= range; dx++) {
+    for (int dy = -range; dy <= range; dy++) {
+      for (int dz = -range; dz <= range; dz++) {
+        const Vector3Int p = center + Vector3Int{dx, dy, dz};
 
-  std::vector<Vector3Int> positions{};
-  for (int dx = -range; dx < range; dx++) {
-    for (int dy = -range; dy < range; dy++) {
-      for (int dz = -range; dz < range; dz++) {
-        Vector3Int position = origin_grid_position + Vector3Int(dx, dy, dz);
-        if (contains(position)) {
-          positions.push_back(position);
-        }
+        if (contains(p))
+          result.push_back(p);
       }
     }
   }
-  return positions;
+
+  return result;
 }

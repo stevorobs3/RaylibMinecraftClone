@@ -1,221 +1,169 @@
-
-#include <array>
-
 #include "mesh_generator.h"
+
+#include <cstring>
+#include <type_traits>
+
+#include "face_appearance.h"
 #include "quad.h"
-#include "world/block.h"
-#include "world/chunk_section.h"
 
 namespace {
 
-// todo: also will need to be aware of block shape (half block, stairs, etc)
-// todo: quesion: can this be reused for things like chests? or would that need to
-// be separate?
-std::vector<Quad> quads_from(
-  const ChunkSection& chunk_section
+constexpr int max_vertices = 65536;
+
+// UV2 is a sentinel on faces that have no overlay.
+// One quad can contain both texture samples, so there is
+// no coplanar geometry and no artificial vertex offset.
+void append_quad(
+  std::vector<MeshData>& meshes,
+  const Quad& quad,
+  const FaceAppearance& face,
+  const TextureAtlas& atlas
 ) {
-  std::vector<Quad> quads;
-
-  auto blocks = chunk_section.const_blocks();
-  // internal blocks can use the efficient lookup of blocks
-  // todo: maybe have an iterator in the chunk_section for:
-  // 1) internal blocks
-  // 2) edge / perimiter / surface blocks (better name needed)
-  for (int x = 1; x < ChunkSection::n - 1; x++) {
-    for (int y = 1; y < ChunkSection::n - 1; y++) {
-      for (int z = 1; z < ChunkSection::n - 1; z++) {
-        if (blocks[x,y,z] == BlockType::AIR) continue;
-        for (Direction dir : Quad::directions) {
-          auto neighbour = chunk_section.internal_neighbour(dir,{x,y,z});
-          //todo: deeper checks here for different block shapes
-          if (neighbour == BlockType::AIR) {
-            quads.push_back(Quad{blocks[x,y,z], dir, {x,y,z}});
-          }
-        }
-      }
-    }
+  if (meshes.empty() ||
+      meshes.back().vertex_count + 4 > max_vertices) {
+    meshes.emplace_back();
   }
 
-  // external blocks need to use world to check neighbouring chunks
+  MeshData& mesh = meshes.back();
 
-  //todo: pull this into a reusable thing with std::views::iota for x,y and z
-  // top and bottom faces
-  for (int y : {0, ChunkSection::n - 1}) {
-    for (int x = 0; x < ChunkSection::n; x++) {
-      for (int z = 0; z < ChunkSection::n; z++) {
-        auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
-        if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
-        for (Direction dir : Quad::directions) {
-          auto neighbour_pos = block_position + Quad::lookup_normal(dir);
-          // todo: remove this once world is infinitely generated
-          if (!chunk_section.world.contains(neighbour_pos))
-            continue;
-          BlockType neighbour = chunk_section.world.get(neighbour_pos);
-          if (neighbour == BlockType::AIR) {
-            quads.push_back(Quad{
-              chunk_section.world.get(block_position),
-              dir,
-              {x,y,z}
-            });
-          }
-        }
-      }
-    }
+  const unsigned short base =
+    static_cast<unsigned short>(mesh.vertex_count);
+  const auto base_uv = atlas.lookup_texture_uv(face.base.texture);
+
+  std::array<Vector2, 4> overlay_uv{{
+    {-1.0f, -1.0f}, {-1.0f, -1.0f},
+    {-1.0f, -1.0f}, {-1.0f, -1.0f}
+  }};
+
+  if (face.overlay) {
+    overlay_uv = atlas.lookup_texture_uv(face.overlay->texture);
   }
 
-  // east and west faces
-  for (int x : {0, ChunkSection::n - 1}) {
-    // we've already done y = 0 and y = ChunkSection::n - 1 for top and bottom faces
-    for (int y = 1; y < ChunkSection::n - 1; y++) {
-      for (int z = 0; z < ChunkSection::n; z++) {
-        auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
-        if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
-        for (Direction dir : Quad::directions) {
-          auto neighbour_pos = block_position + Quad::lookup_normal(dir);
-          // todo: remove this once world is infinitely generated
-          if (!chunk_section.world.contains(neighbour_pos))
-            continue;
-          auto neighbour = chunk_section.world.get(neighbour_pos);
-          if (neighbour == BlockType::AIR) {
-            quads.push_back(Quad{
-              chunk_section.world.get(block_position),
-              dir,
-              {x,y,z}
-            });
-          }
-        }
-      }
-    }
+  // With two layers, the base is opaque and the tint applies
+  // to the overlay. Without it, tint the base as before.
+  const Color tint = face.overlay
+    ? face.overlay->tint : face.base.tint;
+
+  for (int i = 0; i < Quad::n_vertices; i++) {
+    const Vector3 v = quad.vertices[i];
+
+    mesh.vertices.insert(
+      mesh.vertices.end(), {v.x, v.y, v.z}
+    );
+    mesh.normals.insert(
+      mesh.normals.end(),
+      {quad.normal.x, quad.normal.y, quad.normal.z}
+    );
+    mesh.texcoords.insert(
+      mesh.texcoords.end(), {base_uv[i].x, base_uv[i].y}
+    );
+    mesh.texcoords2.insert(
+      mesh.texcoords2.end(), {overlay_uv[i].x, overlay_uv[i].y}
+    );
+    mesh.colors.insert(
+      mesh.colors.end(), {tint.r, tint.g, tint.b, tint.a}
+    );
   }
 
+  mesh.indices.insert(mesh.indices.end(), {
+    static_cast<unsigned short>(base),
+    static_cast<unsigned short>(base + 2),
+    static_cast<unsigned short>(base + 1),
+    static_cast<unsigned short>(base + 3),
+    static_cast<unsigned short>(base + 1),
+    static_cast<unsigned short>(base + 2)
+  });
 
-  // north and south faces
-  for (int z : {0, ChunkSection::n - 1}) {
-    // we've already done x = 0 and ChunkSection::n - 1 for east and west faces
-    for (int x = 1; x < ChunkSection::n - 1; x++) {
-      // we've already done y = 0 and y = ChunkSection::n - 1 for top and bottom faces
-      for (int y = 1; y < ChunkSection::n - 1; y++) {
-        auto block_position = Vector3Int(x,y,z) + chunk_section.origin;
-        if (chunk_section.world.get(block_position) == BlockType::AIR) continue;
-        for (Direction dir : Quad::directions) {
-          auto neighbour_pos = block_position + Quad::lookup_normal(dir);
-          // todo: remove this once world is infinitely generated
-          if (!chunk_section.world.contains(neighbour_pos))
-            continue;
-          auto neighbour = chunk_section.world.get(neighbour_pos);
-          if (neighbour == BlockType::AIR) {
-            quads.push_back(Quad{
-              chunk_section.world.get(block_position),
-              dir,
-              {x,y,z}}
-            );
-          }
-        }
-      }
-    }
-  }
-
-  return quads;
+  mesh.vertex_count   += 4;
+  mesh.triangle_count += 2;
 }
 
+} // namespace
+
+std::vector<MeshData> MeshGenerator::build(
+  const ChunkSnapshot& snapshot
+) const {
+  std::vector<MeshData> result;
+
+  for (int x = 0; x < ChunkSection::n; x++) {
+    for (int y = 0; y < ChunkSection::n; y++) {
+      for (int z = 0; z < ChunkSection::n; z++) {
+        const BlockType type = snapshot.at(x, y, z);
+
+        if (type == BlockType::AIR)
+          continue;
+
+        for (Direction dir : Quad::directions) {
+          const Vector3 normal = Quad::lookup_normal(dir);
+
+          const int dx = static_cast<int>(normal.x);
+          const int dy = static_cast<int>(normal.y);
+          const int dz = static_cast<int>(normal.z);
+
+          if (snapshot.at(
+            x + dx, y + dy, z + dz
+          ) != BlockType::AIR) {
+            continue;
+          }
+
+          const Quad quad{type, dir, {x, y, z}};
+          const auto face = face_appearance(type, dir);
+
+          append_quad(result, quad, face, atlas_);
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
+std::optional<Mesh> MeshGenerator::upload(const MeshData& data) {
+  if (!data.valid())
+    return std::nullopt;
 
-std::optional<Mesh> MeshGenerator::from(ChunkSection &chunk_section) {
+  Mesh mesh{};
+  mesh.vertexCount   = data.vertex_count;
+  mesh.triangleCount = data.triangle_count;
 
-    // step 1:
-    // todo: quads!
-    // build up a conceptual list of faces to render
-    auto quads_to_render = quads_from(chunk_section);
+  auto copy = [](const auto& src) {
+    using T = typename std::decay_t<decltype(src)>::value_type;
 
-    if (quads_to_render.empty()) {
-      TraceLog(LOG_INFO, std::format(
-        "No mesh to render for:{}",
-        to_string(chunk_section.origin)
-      ).c_str());
-      return std::nullopt;
-    } else {
-      TraceLog(LOG_INFO, std::format(
-        "faces_to_render:{} for {}",
-        quads_to_render.size(),
-        to_string(chunk_section.origin)
-      ).c_str());
-    }
+    T* ptr = static_cast<T*>(
+      MemAlloc(src.size() * sizeof(T))
+    );
 
-    // step 2:
-    // iterate over that list, generating all the mesh vertices
+    if (ptr)
+      std::memcpy(ptr, src.data(), src.size() * sizeof(T));
 
-    int vertex_index = 0;
-    int vertex_count = 0;
-    int normal_index = 0;
-    int tex_coords_index = 0;
-    int indices_index = 0;
-    int colours_index = 0;
+    return ptr;
+  };
 
-    Mesh mesh{};
+  mesh.vertices   = copy(data.vertices);
+  mesh.texcoords  = copy(data.texcoords);
+  mesh.texcoords2 = copy(data.texcoords2);
+  mesh.normals    = copy(data.normals);
+  mesh.colors     = copy(data.colors);
+  mesh.indices    = copy(data.indices);
 
-    mesh.triangleCount = quads_to_render.size() * 2;
-    mesh.vertexCount = quads_to_render.size() * 4;
+  if (!mesh.vertices || !mesh.texcoords || !mesh.texcoords2 ||
+      !mesh.normals || !mesh.colors || !mesh.indices) {
+    MemFree(mesh.vertices);
+    MemFree(mesh.texcoords);
+    MemFree(mesh.texcoords2);
+    MemFree(mesh.normals);
+    MemFree(mesh.colors);
+    MemFree(mesh.indices);
 
-    mesh.vertices = (float *)MemAlloc(mesh.vertexCount*3*sizeof(float));    // 3 vertices, 3 coordinates each (x, y, z)
-    mesh.texcoords = (float *)MemAlloc(mesh.vertexCount*2*sizeof(float));   // 3 vertices, 2 coordinates each (x, y)
-    mesh.normals = (float *)MemAlloc(mesh.vertexCount*3*sizeof(float));     // 3 vertices, 3 coordinates each (x, y, z)
-    mesh.indices = (unsigned short *)MemAlloc(quads_to_render.size()*6*sizeof(unsigned short)); // 6 indices per face
-    mesh.colors = (unsigned char *)MemAlloc(mesh.vertexCount * 4* sizeof(char));
-
-    for (Quad& quad : quads_to_render) {
-      auto tex_coords = texture_atlas.lookup_texture_uv(
-        quad.block_type,
-        quad.direction
-      );
-      for (int i = 0; i < Quad::n_vertices; i ++) {
-        mesh.vertices[vertex_index]          = quad.vertices[i].x;
-        mesh.vertices[vertex_index + 1]      = quad.vertices[i].y;
-        mesh.vertices[vertex_index + 2]      = quad.vertices[i].z;
-
-        mesh.normals[normal_index]           = quad.normal.x;
-        mesh.normals[normal_index + 1]       = quad.normal.y;
-        mesh.normals[normal_index + 2]       = quad.normal.z;
-
-        mesh.texcoords[tex_coords_index]     = tex_coords[i].x;
-        mesh.texcoords[tex_coords_index + 1] = tex_coords[i].y;
-
-        mesh.colors[colours_index    ]       = quad.color.r;
-        mesh.colors[colours_index + 1]       = quad.color.g;
-        mesh.colors[colours_index + 2]       = quad.color.b;
-        mesh.colors[colours_index + 3]       = quad.color.a;
-
-        normal_index     += 3;
-        vertex_index     += 3;
-        tex_coords_index += 2;
-        colours_index    += 4;
-      }
-     /* we want all faces to be regular like this:
-      0  1
-      2  3
-      triangle indexes are then:
-      021 and  312
-     */
-      // triangle 021
-      mesh.indices[indices_index]     = vertex_count;
-      mesh.indices[indices_index + 1] = vertex_count + 2;
-      mesh.indices[indices_index + 2] = vertex_count + 1;
-
-      // triangle 312
-      mesh.indices[indices_index + 3] = vertex_count + 3;
-      mesh.indices[indices_index + 4] = vertex_count + 1;
-      mesh.indices[indices_index + 5] = vertex_count + 2;
-      indices_index += 6;
-      vertex_count  += 4;
-    }
-
-    //todo: log info about the mesh
-    // step 3:
-    // upload to gpu
-    // Upload mesh data from CPU (RAM) to GPU (VRAM) memory
-    // todo: can this be done from a separate thread - probs main only.
-    // todo: separate this step so that the mesh building can happen on a non main thread
-    UploadMesh(&mesh, false);
-
-    return mesh;
+    return std::nullopt;
   }
+
+  UploadMesh(&mesh, false);
+
+  if (mesh.vaoId == 0 || mesh.vboId == nullptr) {
+    UnloadMesh(mesh);
+    return std::nullopt;
+  }
+
+  return mesh;
+}
